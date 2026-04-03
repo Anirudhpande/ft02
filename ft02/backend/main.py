@@ -1,14 +1,12 @@
-from fastapi import APIRouter
-from services.simulation_service import simulate_business_data
+from fastapi import FastAPI
+from api.simulate_api import router as simulate_router
 
-router = APIRouter()
+app = FastAPI(
+    title="MSME Risk Intelligence API"
+)
 
-@router.get("/simulate/{gstin}")
-def simulate_data(gstin: str):
+app.include_router(simulate_router)
 
-    data = simulate_business_data(gstin)
-
-    return {
-        "gstin": gstin,
-        "data": data
-    }
+@app.get("/")
+def root():
+    return {"message": "Backend running"}
