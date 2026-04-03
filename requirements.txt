@@ -7,3 +7,6 @@ sqlalchemy
 psycopg2-binary
 networkx
 numpy
+scikit-learn
+shap
+xgboost
