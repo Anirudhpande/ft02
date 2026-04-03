@@ -286,10 +286,22 @@ def generate_pdf_report(business, charts_dir, output_dir):
     elements.append(Paragraph("5. GST Filing Analysis", styles["SectionHeader"]))
 
     gst = business.get("gst_behavior", {})
+    raw_late = gst.get("late_filings_count", 0)
+    raw_months = gst.get("months_not_filed", 0)
+
+    # Check amnesty status
+    try:
+        from utils.amnesty_config import is_any_amnesty_active, get_active_amnesty_windows
+        amnesty_active = is_any_amnesty_active()
+        active_windows = get_active_amnesty_windows()
+    except Exception:
+        amnesty_active = False
+        active_windows = []
+
     gst_data = [
         ["Filing Frequency", str(gst.get("gst_filing_frequency", "N/A"))],
-        ["Late Filings", str(gst.get("late_filings_count", 0))],
-        ["Months Not Filed", str(gst.get("months_not_filed", 0))],
+        ["Late Filings", str(raw_late) + (" (amnesty: suppressed to 0)" if amnesty_active and raw_late > 0 else "")],
+        ["Months Not Filed", str(raw_months) + (" (amnesty: suppressed to 0)" if amnesty_active and raw_months > 0 else "")],
         ["Cancellation History", "Yes" if gst.get("gst_cancellation_history") else "No"],
         ["Multiple Registrations", "Yes" if gst.get("multiple_gst_registrations") else "No"],
     ]
@@ -306,12 +318,48 @@ def generate_pdf_report(business, charts_dir, output_dir):
     ]))
     elements.append(gst_table)
 
-    if gst.get("late_filings_count", 0) >= 5:
-        late_count = str(gst["late_filings_count"])
-        elements.append(Paragraph(
-            "[!] High late filings: " + late_count + " late filings detected",
-            styles["AlertRed"]
-        ))
+    # ── GST Amnesty Adjustment Notice ──
+    if amnesty_active:
+        elements.append(Spacer(1, 8))
+        amnesty_quarters = ", ".join(w.get("quarter", "N/A") for w in active_windows)
+        amnesty_box_data = [
+            ["GST AMNESTY SCHEME ACTIVE"],
+            ["Quarter(s): " + amnesty_quarters],
+        ]
+        adj_rows = []
+        if raw_late > 0:
+            adj_rows.append("late_filings_count: " + str(raw_late) + " -> 0 (suppressed)")
+        if raw_months > 0:
+            adj_rows.append("months_not_filed: " + str(raw_months) + " -> 0 (suppressed)")
+        if raw_late > 0 or raw_months > 0:
+            adj_rows.append("gst_compliance_score: recalculated without late-filing penalties")
+            adj_rows.append("filing_gap_score: reset to 0.0")
+        if adj_rows:
+            amnesty_box_data.append(["Feature Adjustments:"])
+            for row in adj_rows:
+                amnesty_box_data.append(["  " + row])
+        amnesty_box_data.append(["Note: Model weights were NOT retrained. Adjustments applied at feature layer."])
+
+        amnesty_table = Table(amnesty_box_data, colWidths=[460])
+        amnesty_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (0, 0), 11),
+            ("TEXTCOLOR", (0, 0), (0, 0), colors.HexColor("#1565C0")),
+            ("FONTSIZE", (0, 1), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E3F2FD")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1565C0")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(amnesty_table)
+    else:
+        if gst.get("late_filings_count", 0) >= 5:
+            late_count = str(gst["late_filings_count"])
+            elements.append(Paragraph(
+                "[!] High late filings: " + late_count + " late filings detected",
+                styles["AlertRed"]
+            ))
     if gst.get("gst_cancellation_history"):
         elements.append(Paragraph(
             "[!] GST registration was cancelled - significant red flag",
@@ -323,12 +371,13 @@ def generate_pdf_report(business, charts_dir, output_dir):
 
     network = business.get("network_data", {})
     dep_val = network.get("dependency_on_single_customer", 0)
+    circular_trades = network.get("circular_trades", [])
     net_data = [
         ["Vendors", str(network.get("vendor_count", 0))],
         ["Customers", str(network.get("customer_count", 0))],
         ["Concentration Ratio (HHI)", str(round(network.get("customer_concentration_ratio", 0), 4))],
         ["Max Single Customer %", str(round(dep_val * 100)) + "%"],
-        ["Circular Trades", str(len(network.get("circular_trades", [])))],
+        ["Circular Trades Detected", str(len(circular_trades))],
     ]
     net_table = Table(net_data, colWidths=[180, 280])
     net_table.setStyle(TableStyle([
@@ -343,6 +392,66 @@ def generate_pdf_report(business, charts_dir, output_dir):
     ]))
     elements.append(net_table)
 
+    # ── Fraud Ring Detail ──
+    if circular_trades:
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph("Circular Fund Rotation (Fraud Rings)", styles["SubHeader"]))
+        elements.append(Paragraph(
+            "The following closed-loop money rotation patterns were detected in the "
+            "vendor-customer transaction graph. Each ring represents UPI funds being "
+            "rotated among connected MSMEs to artificially inflate transaction velocity.",
+            styles["BodyText2"]
+        ))
+        elements.append(Spacer(1, 6))
+
+        ring_header = [["Ring #", "Entities in Loop", "Rotated Funds (Rs.)"]]
+        ring_rows = []
+        for idx, ct in enumerate(circular_trades, 1):
+            path = ct.get("path", [])
+            # Abbreviate long GSTINs for readability
+            path_labels = []
+            for node in path:
+                if node == gstin:
+                    path_labels.append("TARGET")
+                elif len(node) > 10:
+                    path_labels.append(node[:6] + "..")
+                else:
+                    path_labels.append(node)
+            path_str = _safe_text(" -> ".join(path_labels))
+            funds = ct.get("rotated_funds", 0)
+            funds_str = "Rs." + format(int(funds), ",") if funds else "Unknown"
+            ring_rows.append([str(idx), path_str, funds_str])
+
+        ring_table = Table(ring_header + ring_rows, colWidths=[50, 300, 110])
+        ring_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#D32F2F")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFEBEE")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D32F2F")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#FFCDD2")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        elements.append(ring_table)
+
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(
+            "[!] ALERT: " + str(len(circular_trades)) + " closed-loop fund rotation pattern(s) detected. "
+            "These entities may be artificially inflating transaction velocity scores.",
+            styles["AlertRed"]
+        ))
+    else:
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(
+            "No circular fund rotation patterns detected in the transaction network.",
+            styles["AlertGreen"]
+        ))
+
+    # ── Network Graph Image ──
     network_path = os.path.join(charts_dir, "network_" + gstin + ".png")
     if os.path.exists(network_path):
         elements.append(Spacer(1, 8))
