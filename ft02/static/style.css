@@ -752,4 +752,317 @@ body::before {
     .btn-primary { width: 100%; justify-content: center; }
     .section-header { flex-direction: column; align-items: flex-start; }
     .card-value { font-size: 1.8rem; }
+    .amnesty-form-row { flex-direction: column; }
+    .amnesty-window-card { flex-direction: column; gap: 12px; }
 }
+
+/* ═══ GST AMNESTY PANEL ═══ */
+.amnesty-section {
+    border-left: 3px solid var(--accent-purple);
+}
+
+.amnesty-section .section-header h2 svg {
+    color: var(--accent-purple);
+}
+
+.amnesty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.amnesty-badge .badge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.3s ease;
+}
+
+.amnesty-badge.active {
+    color: var(--accent-green);
+    border-color: rgba(16,185,129,0.3);
+    background: rgba(16,185,129,0.06);
+}
+
+.amnesty-badge.active .badge-dot {
+    background: var(--accent-green);
+    box-shadow: 0 0 8px rgba(16,185,129,0.5);
+    animation: pulse 2s infinite;
+}
+
+.amnesty-controls {
+    margin-top: 16px;
+}
+
+.amnesty-form-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.amnesty-field {
+    flex: 1;
+}
+
+.amnesty-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.amnesty-field input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    font-family: var(--font);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.amnesty-field input::placeholder {
+    color: var(--text-muted);
+}
+
+.amnesty-field input:focus {
+    border-color: rgba(139,92,246,0.5);
+    box-shadow: 0 0 12px rgba(139,92,246,0.15);
+}
+
+.btn-amnesty-register {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: var(--font);
+    color: white;
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-amnesty-register:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 18px rgba(139,92,246,0.35);
+}
+
+.amnesty-windows-list {
+    margin-top: 20px;
+}
+
+.amnesty-empty {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 16px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.amnesty-window-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.amnesty-window-card.active {
+    border-color: rgba(16,185,129,0.25);
+    background: rgba(16,185,129,0.03);
+}
+
+.amnesty-window-card.inactive {
+    opacity: 0.6;
+}
+
+.aw-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.aw-quarter {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.aw-dates {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.aw-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.aw-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.aw-status-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.aw-status-badge.active {
+    background: rgba(16,185,129,0.15);
+    color: var(--accent-green);
+}
+
+.aw-status-badge.inactive {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+}
+
+.btn-aw-action {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: var(--font);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.btn-aw-action.deactivate {
+    color: var(--accent-red);
+    border-color: rgba(239,68,68,0.3);
+}
+
+.btn-aw-action.deactivate:hover {
+    background: rgba(239,68,68,0.08);
+}
+
+.btn-aw-action.activate {
+    color: var(--accent-green);
+    border-color: rgba(16,185,129,0.3);
+}
+
+.btn-aw-action.activate:hover {
+    background: rgba(16,185,129,0.08);
+}
+
+/* ═══ AMNESTY BANNER (in results) ═══ */
+.amnesty-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.05));
+    border: 1px solid rgba(139,92,246,0.2);
+    animation: bannerSlide 0.5s ease;
+}
+
+@keyframes bannerSlide {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.amnesty-banner-icon {
+    flex-shrink: 0;
+    color: var(--accent-purple);
+    margin-top: 2px;
+}
+
+.amnesty-banner-content {
+    flex: 1;
+}
+
+.amnesty-banner-content strong {
+    font-size: 0.95rem;
+    color: var(--accent-purple);
+}
+
+.amnesty-banner-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.amnesty-adjustments {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.adj-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.adj-field {
+    font-weight: 600;
+    color: var(--accent-cyan);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    min-width: 160px;
+}
+
+.adj-original {
+    color: var(--accent-red);
+    text-decoration: line-through;
+    opacity: 0.7;
+    font-size: 0.8rem;
+}
+
+.adj-arrow {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.adj-adjusted {
+    color: var(--accent-green);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.adj-reason {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-style: italic;
+}
+

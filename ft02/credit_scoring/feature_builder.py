@@ -7,6 +7,7 @@ suitable for gradient boosting models.
 """
 
 import numpy as np
+from utils.amnesty_config import is_any_amnesty_active
 
 
 def build_credit_features(business: dict) -> dict:
@@ -41,8 +42,23 @@ def build_credit_features(business: dict) -> dict:
     gst_cancellation = 1 if gst.get("gst_cancellation_history", False) else 0
     multi_registration = 1 if gst.get("multiple_gst_registrations", False) else 0
 
+    # ── GST Amnesty Adjustment ──────────────────────────────────────────────
+    # When the government declares an amnesty quarter, late filings during
+    # that window must NOT penalise the MSME.  We dynamically zero out the
+    # late-filing contribution to the compliance score (and clamp the raw
+    # feature values fed to the ML model) so that the trained model sees
+    # them as benign — without retraining.
+    amnesty_active = is_any_amnesty_active()
+    if amnesty_active:
+        late_filings_for_scoring = 0
+        months_not_filed_for_scoring = 0
+    else:
+        late_filings_for_scoring = late_filings
+        months_not_filed_for_scoring = months_not_filed
+
     # Compliance score (0-1, higher is better)
-    gst_compliance_score = max(0, 1.0 - (late_filings * 0.05) - (months_not_filed * 0.1)
+    gst_compliance_score = max(0, 1.0 - (late_filings_for_scoring * 0.05)
+                               - (months_not_filed_for_scoring * 0.1)
                                - (gst_cancellation * 0.3) - (multi_registration * 0.1))
 
     # ── Turnover Stability ──────────────────────────────────────────────────
@@ -105,8 +121,8 @@ def build_credit_features(business: dict) -> dict:
         "repayment_ratio":          round(float(repayment_ratio), 4),
         "loan_burden_ratio":        round(float(loan_burden_ratio), 4),
         "gst_compliance_score":     round(float(gst_compliance_score), 4),
-        "late_filings_count":       int(late_filings),
-        "months_not_filed":         int(months_not_filed),
+        "late_filings_count":       int(late_filings_for_scoring),
+        "months_not_filed":         int(months_not_filed_for_scoring),
         "gst_cancellation":         int(gst_cancellation),
         "turnover_stability":       round(float(turnover_stability), 4),
         "sales_volatility":         round(float(sales_cv), 4),
@@ -122,6 +138,7 @@ def build_credit_features(business: dict) -> dict:
         "estimated_turnover":       round(float(estimated_turnover), 2),
         "previous_loans_count":     int(total_loans),
         "loan_defaults":            int(defaults),
+        "amnesty_applied":          1 if amnesty_active else 0,
     }
 
     return features
