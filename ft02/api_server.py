@@ -307,6 +307,25 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     # Generate target business
     target = _build_target_business(request)
 
+    # Detect fraud rings and close-loop money rotation dynamically
+    from fraud_detection.network_analyzer import detect_fraud_rings
+    network_data = target.get("network_data", {})
+    edges_data = network_data.get("edges", [])
+    if edges_data:
+        detected_cycles = detect_fraud_rings(edges_data, request.gstin)
+        target["network_data"]["circular_trades"] = detected_cycles
+        
+        # Mark edges as 'circular' if they are part of a detected cycle for visualizations
+        cycle_edge_set = set()
+        for cycle in detected_cycles:
+            path = cycle.get("path", [])
+            for i in range(len(path) - 1):
+                cycle_edge_set.add((path[i], path[i+1]))
+        
+        for edge in target["network_data"]["edges"]:
+            if (edge["source"], edge["target"]) in cycle_edge_set:
+                edge["type"] = "circular"
+
     # Extract features
     from credit_scoring.feature_builder import build_credit_features
     from fraud_detection.fraud_features import build_fraud_features
