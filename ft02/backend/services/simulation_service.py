@@ -54,7 +54,7 @@ def simulate_business_data(gstin):
 
             filing = GSTFiling(
                 gstin=gstin,
-                month=f"2024-{i+1}",
+                month=f"2024-{i+1:02d}",
                 filing_delay_days=random.randint(-2, 5),
                 invoice_count=random.randint(50, 200),
                 sales_value=random.randint(100000, 400000)
