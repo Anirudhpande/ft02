@@ -1,5 +1,6 @@
 /**
  * MSME Credit Risk Intelligence — Frontend Logic
+ * With GST Amnesty Scheme Management (Twist 2)
  */
 
 const API_BASE = '';
@@ -19,6 +20,7 @@ const serverStatus = document.getElementById('server-status');
 // ── Initialize ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     checkServerHealth();
+    loadAmnestyWindows();
 
     // Auto-uppercase GSTIN
     gstinInput.addEventListener('input', (e) => {
@@ -37,6 +39,8 @@ async function checkServerHealth() {
             serverStatus.className = 'header-status ready';
             serverStatus.querySelector('.status-text').textContent =
                 `Models Ready (${data.training_time}s)`;
+            // Update amnesty badge from health
+            updateAmnestyBadge(data.amnesty_active);
         } else {
             serverStatus.querySelector('.status-text').textContent = 'Training models...';
             setTimeout(checkServerHealth, 2000);
@@ -45,6 +49,109 @@ async function checkServerHealth() {
         serverStatus.className = 'header-status error';
         serverStatus.querySelector('.status-text').textContent = 'Server offline';
         setTimeout(checkServerHealth, 5000);
+    }
+}
+
+// ── Amnesty Management ─────────────────────────────────────────────────────────
+function updateAmnestyBadge(active) {
+    const badge = document.getElementById('amnesty-badge');
+    const badgeText = document.getElementById('amnesty-badge-text');
+    if (active) {
+        badge.classList.add('active');
+        badgeText.textContent = 'Amnesty Active';
+    } else {
+        badge.classList.remove('active');
+        badgeText.textContent = 'No Amnesty Active';
+    }
+}
+
+async function loadAmnestyWindows() {
+    try {
+        const res = await fetch(`${API_BASE}/api/amnesty`);
+        const data = await res.json();
+        updateAmnestyBadge(data.amnesty_active);
+        renderAmnestyWindows(data.windows || []);
+    } catch {
+        // Server may not be ready yet
+    }
+}
+
+function renderAmnestyWindows(windows) {
+    const list = document.getElementById('amnesty-windows-list');
+    list.innerHTML = '';
+
+    if (windows.length === 0) {
+        list.innerHTML = '<p class="amnesty-empty">No amnesty windows registered. Use the form above to register one.</p>';
+        return;
+    }
+
+    windows.forEach(w => {
+        const card = document.createElement('div');
+        card.className = `amnesty-window-card ${w.active ? 'active' : 'inactive'}`;
+        card.innerHTML = `
+            <div class="aw-info">
+                <div class="aw-quarter">${w.quarter}</div>
+                <div class="aw-dates">${w.start} → ${w.end}</div>
+                <div class="aw-desc">${w.description}</div>
+            </div>
+            <div class="aw-status">
+                <span class="aw-status-badge ${w.active ? 'active' : 'inactive'}">${w.active ? 'ACTIVE' : 'INACTIVE'}</span>
+                ${w.active
+                    ? `<button class="btn-aw-action deactivate" onclick="toggleAmnesty('${w.quarter}', false)">Deactivate</button>`
+                    : `<button class="btn-aw-action activate" onclick="toggleAmnesty('${w.quarter}', true)">Activate</button>`
+                }
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+async function registerAmnesty() {
+    const quarter = document.getElementById('amnesty-quarter').value.trim();
+    const start = document.getElementById('amnesty-start').value;
+    const end = document.getElementById('amnesty-end').value;
+
+    if (!quarter || !start || !end) {
+        showToast('Please fill all amnesty fields', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/amnesty`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quarter, start_date: start, end_date: end }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Amnesty '${quarter}' registered — late-filing penalties suppressed`, 'success');
+            document.getElementById('amnesty-quarter').value = '';
+            document.getElementById('amnesty-start').value = '';
+            document.getElementById('amnesty-end').value = '';
+            loadAmnestyWindows();
+        } else {
+            showToast('Failed to register amnesty', 'error');
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function toggleAmnesty(quarter, activate) {
+    try {
+        let res;
+        if (activate) {
+            res = await fetch(`${API_BASE}/api/amnesty/${encodeURIComponent(quarter)}/activate`, { method: 'PUT' });
+        } else {
+            res = await fetch(`${API_BASE}/api/amnesty/${encodeURIComponent(quarter)}`, { method: 'DELETE' });
+        }
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            loadAmnestyWindows();
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
     }
 }
 
@@ -106,7 +213,7 @@ function showLoading() {
         } else {
             clearInterval(interval);
         }
-    }, 600);
+    }, 500);
 }
 
 function hideLoading() {
@@ -120,6 +227,32 @@ function renderResults(data) {
     loadingSection.style.display = 'none';
     formSection.style.display = 'none';
     resultsSection.style.display = 'block';
+
+    // ── Amnesty Banner ─────────────────────────────────────────────────────
+    const banner = document.getElementById('amnesty-banner');
+    const amnestyStatus = data.amnesty_status || {};
+    if (amnestyStatus.amnesty_active) {
+        banner.style.display = 'flex';
+        document.getElementById('amnesty-banner-title').textContent = 'GST Amnesty Scheme Active';
+        document.getElementById('amnesty-banner-detail').textContent = amnestyStatus.message || '';
+
+        const adjDiv = document.getElementById('amnesty-adjustments');
+        adjDiv.innerHTML = '';
+        (amnestyStatus.adjusted_fields || []).forEach(adj => {
+            const row = document.createElement('div');
+            row.className = 'adj-row';
+            row.innerHTML = `
+                <span class="adj-field">${adj.field}</span>
+                <span class="adj-original">${adj.original_value}</span>
+                <span class="adj-arrow">→</span>
+                <span class="adj-adjusted">${adj.adjusted_value}</span>
+                <span class="adj-reason">${adj.reason}</span>
+            `;
+            adjDiv.appendChild(row);
+        });
+    } else {
+        banner.style.display = 'none';
+    }
 
     // Summary cards
     document.getElementById('val-score').textContent = data.credit_score;
@@ -170,7 +303,7 @@ function renderResults(data) {
         ['P/S Ratio', data.purchase_summary.purchase_to_sales_ratio.toFixed(2)],
         ['Vendors', data.network_summary.vendor_count],
         ['Customers', data.network_summary.customer_count],
-        ['Late GST Filings', data.gst_behavior.late_filings_count],
+        ['Late GST Filings', data.gst_behavior.late_filings_count + (amnestyStatus.amnesty_active ? ' (amnesty applied)' : '')],
         ['Loan Defaults', data.loan_history.loan_defaults],
     ];
     profileItems.forEach(([label, value]) => {

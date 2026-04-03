@@ -60,7 +60,7 @@
                         <input type="text" id="gstin-input" name="gstin"
                                placeholder="e.g. 27ABCDE1234F1Z5" maxlength="15"
                                required autocomplete="off" spellcheck="false">
-                        <span class="input-hint">15-character Goods & Services Tax Identification Number</span>
+                        <span class="input-hint">15-character Goods &amp; Services Tax Identification Number</span>
                     </div>
                     <button type="submit" id="analyze-btn" class="btn-primary">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -68,6 +68,46 @@
                     </button>
                 </div>
             </form>
+        </section>
+
+        <!-- ─── GST AMNESTY PANEL ─── -->
+        <section class="section-card amnesty-section" id="amnesty-section">
+            <div class="section-header">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    GST Amnesty Scheme
+                </h2>
+                <div class="amnesty-badge" id="amnesty-badge">
+                    <span class="badge-dot"></span>
+                    <span id="amnesty-badge-text">No Amnesty Active</span>
+                </div>
+            </div>
+            <p class="form-intro">Register a government GST amnesty quarter. Late filings during this window will <strong>not</strong> penalise businesses &mdash; the model dynamically adjusts feature weights at inference time without retraining.</p>
+
+            <div class="amnesty-controls">
+                <div class="amnesty-form-row">
+                    <div class="amnesty-field">
+                        <label for="amnesty-quarter">Quarter</label>
+                        <input type="text" id="amnesty-quarter" placeholder="e.g. Q4-2025" spellcheck="false">
+                    </div>
+                    <div class="amnesty-field">
+                        <label for="amnesty-start">Start Date</label>
+                        <input type="date" id="amnesty-start">
+                    </div>
+                    <div class="amnesty-field">
+                        <label for="amnesty-end">End Date</label>
+                        <input type="date" id="amnesty-end">
+                    </div>
+                    <button class="btn-amnesty-register" id="btn-register-amnesty" onclick="registerAmnesty()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                        Register
+                    </button>
+                </div>
+            </div>
+
+            <div class="amnesty-windows-list" id="amnesty-windows-list">
+                <!-- dynamically populated -->
+            </div>
         </section>
 
         <!-- ─── LOADING ─── -->
@@ -80,8 +120,9 @@
                     <div class="step active">Generating business profile</div>
                     <div class="step">Running credit scoring model</div>
                     <div class="step">Detecting fraud patterns</div>
+                    <div class="step">Checking amnesty adjustments</div>
                     <div class="step">Building SHAP explanations</div>
-                    <div class="step">Generating charts & PDF</div>
+                    <div class="step">Generating charts &amp; PDF</div>
                 </div>
             </div>
         </section>
@@ -89,27 +130,39 @@
         <!-- ─── RESULTS ─── -->
         <section id="results-section" style="display:none;">
 
+            <!-- Amnesty Status Banner -->
+            <div class="amnesty-banner" id="amnesty-banner" style="display:none;">
+                <div class="amnesty-banner-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="amnesty-banner-content">
+                    <strong id="amnesty-banner-title">GST Amnesty Active</strong>
+                    <p id="amnesty-banner-detail"></p>
+                </div>
+                <div class="amnesty-adjustments" id="amnesty-adjustments"></div>
+            </div>
+
             <!-- Summary Cards -->
             <div class="summary-row">
                 <div class="summary-card card-score" id="card-score">
                     <div class="card-label">Credit Score</div>
-                    <div class="card-value" id="val-score">—</div>
-                    <div class="card-sub" id="val-risk-band">—</div>
+                    <div class="card-value" id="val-score">&mdash;</div>
+                    <div class="card-sub" id="val-risk-band">&mdash;</div>
                     <div class="score-bar"><div class="score-fill" id="score-fill"></div></div>
                 </div>
                 <div class="summary-card card-fraud" id="card-fraud">
                     <div class="card-label">Fraud Probability</div>
-                    <div class="card-value" id="val-fraud">—</div>
-                    <div class="card-sub" id="val-fraud-level">—</div>
+                    <div class="card-value" id="val-fraud">&mdash;</div>
+                    <div class="card-sub" id="val-fraud-level">&mdash;</div>
                 </div>
                 <div class="summary-card card-decision" id="card-decision">
                     <div class="card-label">Loan Decision</div>
-                    <div class="card-value" id="val-decision">—</div>
-                    <div class="card-sub" id="val-loan-amt">—</div>
+                    <div class="card-value" id="val-decision">&mdash;</div>
+                    <div class="card-sub" id="val-loan-amt">&mdash;</div>
                 </div>
                 <div class="summary-card card-time">
                     <div class="card-label">Analysis Time</div>
-                    <div class="card-value" id="val-time">—</div>
+                    <div class="card-value" id="val-time">&mdash;</div>
                     <div class="card-sub">seconds</div>
                 </div>
             </div>
@@ -175,7 +228,7 @@
                 <div class="section-header">
                     <h2>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Key Risk Factors & Explanations
+                        Key Risk Factors &amp; Explanations
                     </h2>
                 </div>
                 <div id="explanations-list"></div>

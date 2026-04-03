@@ -7,6 +7,7 @@ and behavioral red flags.
 """
 
 import numpy as np
+from utils.amnesty_config import is_any_amnesty_active
 
 
 def build_fraud_features(business: dict) -> dict:
@@ -67,6 +68,13 @@ def build_fraud_features(business: dict) -> dict:
     late_filings = gst.get("late_filings_count", 0)
     months_not_filed = gst.get("months_not_filed", 0)
     multi_reg = 1 if gst.get("multiple_gst_registrations", False) else 0
+
+    # ── GST Amnesty Adjustment ─────────────────────────────────────────────
+    # Suppress late-filing signals during government amnesty quarters
+    amnesty_active = is_any_amnesty_active()
+    if amnesty_active:
+        late_filings = 0
+        months_not_filed = 0
 
     # Filing gap severity
     filing_gap_score = min(1.0, months_not_filed / 6.0 + late_filings / 12.0)
