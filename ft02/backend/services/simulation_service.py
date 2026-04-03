@@ -1,34 +1,113 @@
 import random
+from backend.database.db import SessionLocal
+from backend.database.models import Business, GSTFiling, UPITransaction, EWayShipment
+
 
 def simulate_business_data(gstin):
 
-    gst_filings = []
-    for i in range(12):
-        gst_filings.append({
-            "month": i+1,
-            "invoice_count": random.randint(50,200),
-            "filing_delay": random.randint(-2,5),
-            "sales_value": random.randint(100000,400000)
-        })
+    db = SessionLocal()
 
-    transactions = []
-    for i in range(200):
-        transactions.append({
-            "sender": gstin,
-            "receiver": f"BIZ{random.randint(1,20)}",
-            "amount": random.randint(500,10000)
-        })
+    try:
 
-    shipments = []
-    for i in range(20):
-        shipments.append({
-            "origin": "Pune",
-            "destination": "Mumbai",
-            "value": random.randint(10000,50000)
-        })
+        business = db.query(Business).filter(Business.gstin == gstin).first()
 
-    return {
-        "gst_filings": gst_filings,
-        "upi_transactions": transactions,
-        "eway_shipments": shipments
-    }
+        if not business:
+            business = Business(
+                gstin=gstin,
+                business_name="Demo MSME",
+                state="Maharashtra",
+                industry="Manufacturing",
+                registration_year=2020,
+                business_age=4
+            )
+            db.add(business)
+            db.commit()
+
+        suppliers = db.query(Business).filter(Business.gstin.like("BIZ%")).all()
+
+        if len(suppliers) == 0:
+
+            supplier_list = []
+
+            for i in range(1, 21):
+
+                supplier = Business(
+                    gstin=f"BIZ{i}",
+                    business_name=f"Supplier {i}",
+                    state="Maharashtra",
+                    industry="Trading",
+                    registration_year=2018,
+                    business_age=6
+                )
+
+                supplier_list.append(supplier)
+
+            db.add_all(supplier_list)
+            db.commit()
+
+       
+
+        all_businesses = db.query(Business.gstin).all()
+        gstins = [b[0] for b in all_businesses]
+
+
+        filings = []
+
+        for i in range(12):
+
+            filing = GSTFiling(
+                gstin=gstin,
+                month=f"2024-{i+1}",
+                filing_delay_days=random.randint(-2, 5),
+                invoice_count=random.randint(50, 200),
+                sales_value=random.randint(100000, 400000)
+            )
+
+            filings.append(filing)
+
+        db.add_all(filings)
+
+        transactions = []
+
+        for i in range(200):
+
+            receiver = random.choice(gstins)
+
+            txn = UPITransaction(
+                sender_gstin=gstin,
+                receiver_gstin=receiver,
+                amount=random.randint(500, 10000)
+            )
+
+            transactions.append(txn)
+
+        db.add_all(transactions)
+
+      
+        shipments = []
+
+        for i in range(20):
+
+            shipment = EWayShipment(
+                gstin=gstin,
+                origin="Pune",
+                destination="Mumbai",
+                shipment_value=random.randint(10000, 50000)
+            )
+
+            shipments.append(shipment)
+
+        db.add_all(shipments)
+
+        db.commit()
+
+        return {"message": "Simulation data inserted successfully"}
+
+    except Exception as e:
+
+        db.rollback()
+        return {"error": str(e)}
+
+    finally:
+
+        db.close()
