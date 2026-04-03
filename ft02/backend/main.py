@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.simulate_api import router as simulate_router
+from backend.api.simulate_api import router as simulate_router
 
 app = FastAPI(
     title="MSME Risk Intelligence API"
