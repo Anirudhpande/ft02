@@ -3,3 +3,7 @@ uvicorn
 streamlit
 pandas
 requests
+sqlalchemy
+psycopg2-binary
+networkx
+numpy

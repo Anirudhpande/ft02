@@ -1,9 +1,9 @@
 from fastapi import FastAPI
-from api.simulate_api import router as simulate_router
-from api.feature_api import router as feature_router
-from api.credit_api import router as credit_router
-from api.bankruptcy_api import router as bankruptcy_router
-from api.fraud_api import router as fraud_router
+from backend.api.simulate_api import router as simulate_router
+from backend.api.feature_api import router as feature_router
+from backend.api.credit_api import router as credit_router
+from backend.api.bankruptcy_api import router as bankruptcy_router
+from backend.api.fraud_api import router as fraud_router
 
 app = FastAPI()
 

@@ -45,11 +45,8 @@ def simulate_business_data(gstin):
             db.add_all(supplier_list)
             db.commit()
 
-       
-
         all_businesses = db.query(Business.gstin).all()
         gstins = [b[0] for b in all_businesses]
-
 
         filings = []
 
@@ -83,7 +80,6 @@ def simulate_business_data(gstin):
 
         db.add_all(transactions)
 
-      
         shipments = []
 
         for i in range(20):
@@ -101,12 +97,39 @@ def simulate_business_data(gstin):
 
         db.commit()
 
-        return {"message": "Simulation data inserted successfully"}
+        # Return structured data for downstream services
+        return {
+            "gst_filings": [
+                {
+                    "filing_delay": f.filing_delay_days,
+                    "sales_value": f.sales_value,
+                    "invoice_count": f.invoice_count,
+                    "month": f.month
+                }
+                for f in filings
+            ],
+            "upi_transactions": [
+                {
+                    "sender": t.sender_gstin,
+                    "receiver": t.receiver_gstin,
+                    "amount": t.amount
+                }
+                for t in transactions
+            ],
+            "eway_shipments": [
+                {
+                    "origin": s.origin,
+                    "destination": s.destination,
+                    "shipment_value": s.shipment_value
+                }
+                for s in shipments
+            ]
+        }
 
     except Exception as e:
 
         db.rollback()
-        return {"error": str(e)}
+        raise RuntimeError(f"Simulation failed: {str(e)}")
 
     finally:
 
