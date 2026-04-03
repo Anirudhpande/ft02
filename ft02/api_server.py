@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 import uvicorn
 
 # Ensure project root is on path
@@ -98,6 +98,7 @@ class AnalyzeResponse(BaseModel):
     purchase_summary: dict
     charts: dict
     pdf_url: str
+    amnesty_status: dict
     elapsed_seconds: float
 
 
@@ -150,10 +151,13 @@ async def startup_train_models():
 
 @app.get("/api/health")
 async def health_check():
+    from utils.amnesty_config import get_active_amnesty_windows
     return {
         "status": "ready" if _models["ready"] else "training",
         "models_trained": _models["ready"],
         "training_time": round(_models["training_time"], 1),
+        "amnesty_active": len(get_active_amnesty_windows()) > 0,
+        "amnesty_windows": get_active_amnesty_windows(),
     }
 
 
@@ -168,6 +172,76 @@ async def list_sectors():
             "turnover_range": info["typical_turnover_range"],
         })
     return {"sectors": sectors}
+
+
+# ── Amnesty Management Endpoints ───────────────────────────────────────────────
+
+class AmnestyRequest(BaseModel):
+    quarter: str = Field(..., description="Amnesty quarter label, e.g. Q4-2025")
+    start_date: str = Field(..., description="Start date ISO format, e.g. 2025-10-01")
+    end_date: str = Field(..., description="End date ISO format, e.g. 2025-12-31")
+    description: Optional[str] = Field(None, description="Amnesty description")
+
+
+@app.get("/api/amnesty")
+async def list_amnesty_windows():
+    """List all registered amnesty windows."""
+    from utils.amnesty_config import get_all_amnesty_windows, is_any_amnesty_active
+    return {
+        "amnesty_active": is_any_amnesty_active(),
+        "windows": get_all_amnesty_windows(),
+    }
+
+
+@app.post("/api/amnesty")
+async def register_amnesty(request: AmnestyRequest):
+    """
+    Register a new GST amnesty quarter.
+    Late filings during this window will NOT be penalised in
+    credit scoring or fraud detection — without retraining the models.
+    """
+    from utils.amnesty_config import register_amnesty_window, is_any_amnesty_active
+    record = register_amnesty_window(
+        quarter=request.quarter,
+        start_date=request.start_date,
+        end_date=request.end_date,
+        description=request.description or "",
+    )
+    return {
+        "success": True,
+        "message": f"Amnesty window '{request.quarter}' registered. "
+                   f"Late-filing penalties are now suppressed.",
+        "amnesty_active": is_any_amnesty_active(),
+        "record": record,
+    }
+
+
+@app.delete("/api/amnesty/{quarter}")
+async def deactivate_amnesty(quarter: str):
+    """Deactivate an amnesty window so penalties resume."""
+    from utils.amnesty_config import deactivate_amnesty_window, is_any_amnesty_active
+    ok = deactivate_amnesty_window(quarter)
+    if not ok:
+        raise HTTPException(404, f"Amnesty window '{quarter}' not found")
+    return {
+        "success": True,
+        "message": f"Amnesty window '{quarter}' deactivated. Penalties restored.",
+        "amnesty_active": is_any_amnesty_active(),
+    }
+
+
+@app.put("/api/amnesty/{quarter}/activate")
+async def reactivate_amnesty(quarter: str):
+    """Re-activate a previously deactivated amnesty window."""
+    from utils.amnesty_config import activate_amnesty_window, is_any_amnesty_active
+    ok = activate_amnesty_window(quarter)
+    if not ok:
+        raise HTTPException(404, f"Amnesty window '{quarter}' not found")
+    return {
+        "success": True,
+        "message": f"Amnesty window '{quarter}' re-activated.",
+        "amnesty_active": is_any_amnesty_active(),
+    }
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
@@ -353,7 +427,63 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "network": f"/api/chart/network_{gstin}.png",
         },
         "pdf_url": f"/api/report/{gstin}/pdf",
+        "amnesty_status": _build_amnesty_status(target),
         "elapsed_seconds": 0,
+    }
+
+
+def _build_amnesty_status(target: dict) -> dict:
+    """Build amnesty status metadata for the API response."""
+    from utils.amnesty_config import is_any_amnesty_active, get_active_amnesty_windows
+
+    amnesty_active = is_any_amnesty_active()
+    active_windows = get_active_amnesty_windows()
+    credit_features = target.get("_credit_features", {})
+
+    raw_gst = target.get("gst_behavior", {})
+    original_late = raw_gst.get("late_filings_count", 0)
+    original_months = raw_gst.get("months_not_filed", 0)
+
+    adjusted_fields = []
+    if amnesty_active:
+        if original_late > 0:
+            adjusted_fields.append({
+                "field": "late_filings_count",
+                "original_value": original_late,
+                "adjusted_value": 0,
+                "reason": "Suppressed under GST amnesty scheme",
+            })
+        if original_months > 0:
+            adjusted_fields.append({
+                "field": "months_not_filed",
+                "original_value": original_months,
+                "adjusted_value": 0,
+                "reason": "Suppressed under GST amnesty scheme",
+            })
+        if original_late > 0 or original_months > 0:
+            adjusted_fields.append({
+                "field": "gst_compliance_score",
+                "original_value": "recalculated (penalties removed)",
+                "adjusted_value": round(credit_features.get("gst_compliance_score", 0), 4),
+                "reason": "Late-filing penalties excluded from compliance score",
+            })
+            adjusted_fields.append({
+                "field": "filing_gap_score",
+                "original_value": "recalculated (penalties removed)",
+                "adjusted_value": 0.0,
+                "reason": "Filing gap severity reset under amnesty",
+            })
+
+    return {
+        "amnesty_active": amnesty_active,
+        "active_windows": active_windows,
+        "adjustments_applied": len(adjusted_fields),
+        "adjusted_fields": adjusted_fields,
+        "message": (
+            f"GST Amnesty active — {len(adjusted_fields)} feature weights "
+            f"dynamically adjusted without model retraining."
+            if amnesty_active else "No amnesty scheme active."
+        ),
     }
 
 
