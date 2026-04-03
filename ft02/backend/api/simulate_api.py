@@ -10,9 +10,9 @@ def simulate_data(gstin: str):
     if not validate_gstin(gstin):
         return {"error": "Invalid GSTIN"}
 
-    data = simulate_business_data(gstin)
+    result = simulate_business_data(gstin)
 
     return {
         "gstin": gstin,
-        "data": data
+        "status": result
     }
