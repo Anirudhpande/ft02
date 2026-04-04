@@ -244,6 +244,47 @@ async def reactivate_amnesty(quarter: str):
     }
 
 
+# ── Twist 1: Advanced Fraud Ring Check ─────────────────────────────────────────
+
+class Transaction(BaseModel):
+    sender: str
+    receiver: str
+    amount: float
+    timestamp: str
+
+class FraudCheckRequest(BaseModel):
+    transactions: List[Transaction]
+
+@app.post("/api/fraud-check")
+async def check_fraud_rings(request: FraudCheckRequest):
+    """
+    Advanced standalone endpoint to identify circular money rotation.
+    Takes raw UPI transactions with timestamps and exact amounts.
+    Returns PyVis HTML URL and complete cyclic insights.
+    """
+    from fraud_detection.network_analyzer import analyze_transaction_network, generate_interactive_pyvis
+    import time, os
+    
+    tx_dicts = [tx.model_dump() for tx in request.transactions]
+    analysis = analyze_transaction_network(tx_dicts, time_window_hours=48)
+    
+    html_file = f"fraud_graph_{int(time.time())}.html"
+    static_folder = os.path.join(PROJECT_ROOT, "static")
+    output_path = os.path.join(static_folder, html_file)
+    
+    # Generate PyVis chart
+    generate_interactive_pyvis(analysis["graph"], analysis["detected_cycles"], output_path)
+    
+    return {
+        "fraud_flag": analysis["fraud_flag"],
+        "fraud_score": analysis["fraud_score"],
+        "fraud_type": analysis["fraud_type"],
+        "involved_entities": analysis["involved_entities"],
+        "detected_cycles": analysis["detected_cycles"],
+        "visualization_url": f"/static/{html_file}"
+    }
+
+
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 async def analyze_gstin(request: AnalyzeRequest):
     """Analyze a GSTIN and generate a full credit risk report."""
