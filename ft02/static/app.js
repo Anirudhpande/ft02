@@ -227,6 +227,9 @@ function renderResults(data) {
     loadingSection.style.display = 'none';
     formSection.style.display = 'none';
     resultsSection.style.display = 'block';
+    
+    // Default to 'all' view when newly generated
+    switchTab('all');
 
     // ── Amnesty Banner ─────────────────────────────────────────────────────
     const banner = document.getElementById('amnesty-banner');
@@ -283,7 +286,15 @@ function renderResults(data) {
     cardDec.className = 'summary-card card-decision ' + data.decision.toLowerCase();
 
     // Time
-    document.getElementById('val-time').textContent = data.elapsed_seconds.toFixed(1);
+    document.getElementById('val-time').textContent = 'Processed in ' + data.elapsed_seconds.toFixed(1) + 's';
+
+    // Business Headers added in new UI
+    const bNameElt = document.getElementById('b-name');
+    if(bNameElt) bNameElt.textContent = data.business_name;
+    const bGstinElt = document.getElementById('b-gstin');
+    if(bGstinElt) bGstinElt.textContent = 'GSTIN: ' + data.gstin;
+    const bSectorElt = document.getElementById('b-sector');
+    if(bSectorElt) bSectorElt.textContent = data.sector;
 
     // Profile grid
     const profileGrid = document.getElementById('profile-grid');
@@ -308,62 +319,90 @@ function renderResults(data) {
     ];
     profileItems.forEach(([label, value]) => {
         const div = document.createElement('div');
-        div.className = 'profile-item';
-        div.innerHTML = `<span class="p-label">${label}</span><span class="p-value">${value}</span>`;
+        div.className = 'flex flex-col p-3 border border-outline-variant bg-white';
+        div.innerHTML = `<span class="text-[9px] font-black uppercase tracking-widest text-outline mb-1">${label}</span>
+                         <span class="text-xs font-bold text-on-surface">${value}</span>`;
         profileGrid.appendChild(div);
     });
 
     // PDF download
-    document.getElementById('btn-download-pdf').onclick = () => {
-        window.open(data.pdf_url, '_blank');
-    };
+    const pdfBtn = document.getElementById('btn-download-pdf-app');
+    if(pdfBtn) {
+        pdfBtn.onclick = () => {
+            window.open(data.pdf_url + "?t=" + new Date().getTime(), '_blank');
+        };
+    }
 
     // Decision reasons
     const reasonsDiv = document.getElementById('decision-reasons');
     reasonsDiv.innerHTML = '';
     data.decision_reasons.forEach(reason => {
         const div = document.createElement('div');
-        let cls = 'neutral';
+        let cls = 'border-l-4 border-outline-variant text-outline';
+        let icon = 'info';
         if (reason.toLowerCase().includes('strong') || reason.toLowerCase().includes('low fraud') || reason.toLowerCase().includes('stable')) {
-            cls = 'positive';
+            cls = 'border-l-4 border-primary text-primary bg-primary-container/10';
+            icon = 'check_circle';
         } else if (reason.toLowerCase().includes('below') || reason.toLowerCase().includes('exceed') || reason.toLowerCase().includes('poor') || reason.toLowerCase().includes('high') || reason.toLowerCase().includes('unstable') || reason.toLowerCase().includes('default')) {
-            cls = 'negative';
+            cls = 'border-l-4 border-error text-error bg-error-container/20';
+            icon = 'warning';
         }
-        div.className = `reason-item ${cls}`;
-        div.textContent = reason;
+        div.className = `p-3 flex gap-2 items-start bg-white ${cls}`;
+        div.innerHTML = `<span class="material-symbols-outlined text-sm pt-0.5">${icon}</span><span>${reason}</span>`;
         reasonsDiv.appendChild(div);
     });
 
-    // Charts
-    document.getElementById('chart-gauge').src = data.charts.gauge;
-    document.getElementById('chart-radar').src = data.charts.radar;
-    document.getElementById('chart-sales').src = data.charts.sales;
-    document.getElementById('chart-turnover').src = data.charts.turnover;
-    document.getElementById('chart-network').src = data.charts.network;
+    // Charts (Plotly Interactive)
+    const config = { responsive: true, displayModeBar: false };
+    if(data.charts.gauge) Plotly.newPlot('chart-gauge', data.charts.gauge.data, data.charts.gauge.layout, config);
+    if(data.charts.radar) Plotly.newPlot('chart-radar', data.charts.radar.data, data.charts.radar.layout, config);
+    if(data.charts.sales) Plotly.newPlot('chart-sales', data.charts.sales.data, data.charts.sales.layout, config);
+    if(data.charts.turnover) Plotly.newPlot('chart-turnover', data.charts.turnover.data, data.charts.turnover.layout, config);
+    if(data.charts.network) Plotly.newPlot('chart-network', data.charts.network.data, data.charts.network.layout, config);
 
-    // Explanations
+    // Fraud Detection Info for Network Topology
+    const circCount = data.network_summary.circular_trades_count || 0;
+    const fraudText = circCount > 0 
+        ? `The automated topology scan detected <b>${circCount} circular funding loops</b> within the immediate vendor-customer ecosystem. The underlying nodes and interconnects highlighted in red reveal closed-loop transactions where identical capital is shifted sequentially between entities. This structure is a mathematical hallmark of artificial invoice inflation and requires strict manual compliance review.`
+        : `The automated topology scan verifies a healthy, linear supply chain distribution. No closed-loop circular capital flows were detected among vendor and client pairs. The network spread supports the reported financial metrics organically without cyclic friction.`;
+    const netFraudTxtEl = document.getElementById('network-fraud-text');
+    if(netFraudTxtEl) netFraudTxtEl.innerHTML = fraudText;
+
+    // Explanations Translation into Narrative Paragraphs
     const explDiv = document.getElementById('explanations-list');
     explDiv.innerHTML = '';
+    
+    let mitigants = [];
+    let risks = [];
+    
     data.explanations.forEach(exp => {
-        const div = document.createElement('div');
-        const stripped = exp.trim();
-        if (stripped === '---' || stripped === '') {
-            div.className = 'explanation-item separator';
-        } else if (stripped.startsWith('Credit score') || stripped.startsWith('Fraud probability')) {
-            div.className = 'explanation-item header';
-            div.textContent = stripped;
-        } else if (stripped.startsWith('+ ') || stripped.startsWith('  +')) {
-            div.className = 'explanation-item positive';
-            div.textContent = stripped;
-        } else if (stripped.startsWith('[!]') || stripped.startsWith('  [!]')) {
-            div.className = 'explanation-item negative';
-            div.textContent = stripped;
-        } else {
-            div.className = 'explanation-item';
-            div.textContent = stripped;
+        let text = exp.trim();
+        if(text.startsWith('+') || text.startsWith('  +')) {
+            mitigants.push(text.replace('+ ', '').replace('  +', '').trim());
+        } else if(text.startsWith('[!]') || text.startsWith('  [!]')) {
+            risks.push(text.replace('[!]', '').replace('  [!]', '').trim());
+        } else if(text.length > 5 && text !== '---' && !text.toLowerCase().includes('score') && !text.toLowerCase().includes('probability')) {
+             risks.push(text.replace('-', '').trim());
         }
-        explDiv.appendChild(div);
     });
+    
+    // Build Narrative HTML
+    explDiv.className = 'grid grid-cols-2 gap-8 text-sm mt-4';
+    
+    let riskHtml = `<div class="p-6 border border-error/20 bg-error-container/5 border-l-4 border-l-error rounded-sm print-shadow">
+        <h4 class="font-extrabold text-error mb-3 tracking-tight flex items-center gap-2"><span class="material-symbols-outlined text-base">warning</span> Critical Risk Factors</h4>
+        <p class="text-on-surface-variant leading-relaxed text-xs font-medium">Our neural risk evaluation model has identified specific vulnerabilities in the business profile. ${risks.join('. ')}. These statistical patterns strongly suggest that closer monitoring is necessary during manual underwriting.</p>
+    </div>`;
+    
+    let mitHtml = `<div class="p-6 border border-primary/20 bg-primary-container/10 border-l-4 border-l-primary rounded-sm print-shadow">
+        <h4 class="font-extrabold text-primary mb-3 tracking-tight flex items-center gap-2"><span class="material-symbols-outlined text-base">check_circle</span> Mitigating Strengths</h4>
+        <p class="text-on-surface-variant leading-relaxed text-xs font-medium">Despite identified weaknesses, the enterprise exhibits structural strengths. ${mitigants.join('. ')}. Such indicators contribute positively to the final credit rating baseline.</p>
+    </div>`;
+    
+    if(risks.length === 0) riskHtml = '';
+    if(mitigants.length === 0) mitHtml = '';
+    
+    explDiv.innerHTML = riskHtml + mitHtml;
 
     // Fraud indicators
     const fiSection = document.getElementById('fraud-indicators-section');
@@ -396,6 +435,30 @@ function resetForm() {
     document.getElementById('score-fill').style.width = '0%';
     gstinInput.focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Tab Management ─────────────────────────────────────────────────────────────
+function switchTab(tabId) {
+    const sections = document.querySelectorAll('.report-section');
+    if(sections.length === 0) return;
+    
+    const profileSection = document.getElementById('view-profile');
+    
+    if(tabId === 'all') {
+        sections.forEach(s => s.style.display = 'block');
+        if(profileSection) profileSection.style.display = 'block';
+    } else {
+        sections.forEach(s => s.style.display = 'none');
+        if(profileSection) profileSection.style.display = (tabId === 'dashboard') ? 'block' : 'none';
+        const target = document.getElementById('view-' + tabId);
+        if(target) target.style.display = 'block';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Trigger window resize to force Plotly charts to adapt to container constraints
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 50);
 }
 
 // ── Toast Notifications ────────────────────────────────────────────────────────

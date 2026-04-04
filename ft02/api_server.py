@@ -378,6 +378,9 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     generate_turnover_chart(target, CHARTS_DIR)
     generate_fraud_network(target, CHARTS_DIR)
 
+    from visualizations.plotly_charts import generate_interactive_charts
+    interactive_charts = generate_interactive_charts(target)
+
     # Generate PDF
     from report_generation.pdf_report import generate_pdf_report
     generate_pdf_report(target, CHARTS_DIR, REPORTS_DIR)
@@ -438,13 +441,7 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
         "purchase_summary": {
             "purchase_to_sales_ratio": target.get("purchase_data", {}).get("purchase_to_sales_ratio", 0),
         },
-        "charts": {
-            "sales": f"/api/chart/sales_{gstin}.png",
-            "gauge": f"/api/chart/gauge_{gstin}.png",
-            "radar": f"/api/chart/radar_{gstin}.png",
-            "turnover": f"/api/chart/turnover_{gstin}.png",
-            "network": f"/api/chart/network_{gstin}.png",
-        },
+        "charts": interactive_charts,
         "pdf_url": f"/api/report/{gstin}/pdf",
         "amnesty_status": _build_amnesty_status(target),
         "elapsed_seconds": 0,

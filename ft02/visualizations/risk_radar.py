@@ -14,16 +14,6 @@ import os
 
 
 def generate_risk_radar(business: dict, output_dir: str) -> str:
-    """
-    Generate a risk radar chart for a business.
-
-    Args:
-        business: Complete business dictionary
-        output_dir: Directory to save the chart
-
-    Returns:
-        Path to saved chart image
-    """
     gstin = business["business_identity"]["gstin"]
     features = business.get("_credit_features", {})
 
@@ -51,60 +41,66 @@ def generate_risk_radar(business: dict, output_dir: str) -> str:
     angles = [n / float(N) * 2 * np.pi for n in range(N)]
     angles += angles[:1]
 
-    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+    with plt.style.context("dark_background"):
+        fig, ax = plt.subplots(figsize=(9, 9), subplot_kw=dict(polar=True))
+        fig.patch.set_facecolor('#121212')
+        ax.set_facecolor('#121212')
 
-    # Draw the radar
-    ax.plot(angles, values, "o-", linewidth=2.5, color="#2196F3",
-            markersize=8, label="Current Business")
-    ax.fill(angles, values, alpha=0.15, color="#2196F3")
+        # Glow lines for radar
+        for w, alpha in [(8, 0.1), (5, 0.25), (3, 0.4)]:
+            ax.plot(angles, values, "-", linewidth=w, color="#1E88E5", alpha=alpha, zorder=2)
 
-    # Draw reference circles
-    for level in [0.25, 0.50, 0.75, 1.0]:
-        ref_values = [level] * (N + 1)
-        ax.plot(angles, ref_values, "--", linewidth=0.5, color="#CCCCCC", alpha=0.7)
+        # Draw the main radar
+        ax.plot(angles, values, "o-", linewidth=2.5, color="#64B5F6", markersize=8, label="Current Business", zorder=3)
+        ax.fill(angles, values, alpha=0.2, color="#2196F3", zorder=1)
 
-    # Color zones on each axis
-    for i, (cat, val) in enumerate(zip(categories, values[:-1])):
-        if val >= 0.7:
-            color = "#4CAF50"
-        elif val >= 0.4:
-            color = "#FF9800"
-        else:
-            color = "#F44336"
+        # Draw reference circles
+        for level in [0.25, 0.50, 0.75, 1.0]:
+            ref_values = [level] * (N + 1)
+            ax.plot(angles, ref_values, "--", linewidth=1, color="#555555", alpha=0.5, zorder=0)
 
-        ax.plot([angles[i]], [val], "o", color=color, markersize=10, zorder=5)
+        # Color zones on each axis
+        for i, (cat, val) in enumerate(zip(categories, values[:-1])):
+            if val >= 0.7:
+                color = "#4CAF50"
+            elif val >= 0.4:
+                color = "#FF9800"
+            else:
+                color = "#F44336"
 
-    # Labels
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(categories, fontsize=10, fontweight="bold")
+            ax.plot([angles[i]], [val], "o", color=color, markersize=14, zorder=4, alpha=0.4)
+            ax.plot([angles[i]], [val], "o", color=color, markersize=8, zorder=5, markeredgewidth=1.5, markeredgecolor="#ffffff")
 
-    # Y-axis labels
-    ax.set_yticks([0.25, 0.50, 0.75, 1.0])
-    ax.set_yticklabels(["25%", "50%", "75%", "100%"], fontsize=8, color="#999")
-    ax.set_ylim(0, 1.05)
+        # Labels
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(categories, fontsize=11, fontweight="bold", color="#cccccc")
 
-    ax.set_title(
-        f"Risk Assessment Radar — {business['business_identity']['trade_name']}",
-        pad=25, fontsize=14, fontweight="bold"
-    )
+        # Y-axis labels
+        ax.set_yticks([0.25, 0.50, 0.75, 1.0])
+        ax.set_yticklabels(["25%", "50%", "75%", "100%"], fontsize=9, color="#777777")
+        ax.set_ylim(0, 1.1)
 
-    # Legend
-    from matplotlib.lines import Line2D
-    legend_elements = [
-        Line2D([0], [0], marker="o", color="w", markerfacecolor="#4CAF50",
-               markersize=10, label="Strong (≥70%)"),
-        Line2D([0], [0], marker="o", color="w", markerfacecolor="#FF9800",
-               markersize=10, label="Moderate (40-70%)"),
-        Line2D([0], [0], marker="o", color="w", markerfacecolor="#F44336",
-               markersize=10, label="Weak (<40%)"),
-    ]
-    ax.legend(handles=legend_elements, loc="upper right",
-              bbox_to_anchor=(1.3, 1.1), fontsize=9)
+        ax.spines['polar'].set_color('#333333')
 
-    plt.tight_layout()
+        ax.set_title(
+            f"Risk Assessment Radar — {business['business_identity']['trade_name']}",
+            pad=35, fontsize=18, fontweight="bold", color="#ffffff"
+        )
 
-    filepath = os.path.join(output_dir, f"radar_{gstin}.png")
-    fig.savefig(filepath, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+        # Legend
+        from matplotlib.lines import Line2D
+        legend_elements = [
+            Line2D([0], [0], marker="o", color="#121212", markerfacecolor="#4CAF50", markersize=10, label="Strong (≥70%)"),
+            Line2D([0], [0], marker="o", color="#121212", markerfacecolor="#FF9800", markersize=10, label="Moderate (40-70%)"),
+            Line2D([0], [0], marker="o", color="#121212", markerfacecolor="#F44336", markersize=10, label="Weak (<40%)"),
+        ]
+        ax.legend(handles=legend_elements, loc="upper right", bbox_to_anchor=(1.25, 1.15), 
+                  fontsize=10, facecolor="#000000", edgecolor="#333333")
+
+        plt.tight_layout()
+
+        filepath = os.path.join(output_dir, f"radar_{gstin}.png")
+        fig.savefig(filepath, dpi=300, bbox_inches="tight", facecolor='#121212', transparent=False)
+        plt.close(fig)
 
     return filepath

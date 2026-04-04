@@ -1,265 +1,422 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MSME Credit Risk Intelligence</title>
-    <meta name="description" content="Credit risk analysis platform for MSMEs — analyze GSTIN and generate comprehensive credit reports">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Credit Report | RiskEngine Pro</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <!-- Tailwind Configuration script directly from mockup -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#4a5d71", "surface-tint": "#006d4e", "on-primary": "#ffffff",
+                        "surface-variant": "#dee5d9", "on-secondary-fixed": "#121d2b", "on-primary-container": "#002114",
+                        "surface-container-lowest": "#ffffff", "on-secondary-container": "#121d2b", "outline-variant": "#c2c9bd",
+                        "primary": "#006d4e", "inverse-on-surface": "#f1f1f1", "secondary-fixed": "#d3e4f8",
+                        "tertiary-fixed": "#ffdadb", "on-surface": "#191c19", "on-secondary": "#ffffff",
+                        "tertiary-container": "#ffdadb", "surface-dim": "#d9dbd6", "surface-container-highest": "#e2e3de",
+                        "on-error": "#ffffff", "surface-bright": "#f9faf4", "on-tertiary-fixed-variant": "#92002a",
+                        "on-error-container": "#410002", "inverse-primary": "#57de9e", "primary-container": "#76fbb8",
+                        "error-container": "#ffdad6", "on-background": "#191c19", "on-primary-fixed": "#002114",
+                        "on-primary-fixed-variant": "#00523a", "surface-container-high": "#ebece7", "inverse-surface": "#2e312e",
+                        "tertiary": "#9c4146", "error": "#ba1a1a", "outline": "#72796f", "on-tertiary-fixed": "#40000d",
+                        "on-tertiary": "#ffffff", "background": "#f9faf4", "surface-container-low": "#f3f4ef",
+                        "secondary": "#4c6056", "on-surface-variant": "#424940", "secondary-container": "#cee9db",
+                        "surface-container": "#f1f1f1", "surface": "#f9faf4", "on-tertiary-container": "#41000b",
+                        "primary-fixed-dim": "#57de9e", "on-secondary-fixed-variant": "#354859", "primary-fixed": "#76fbb8",
+                        "tertiary-fixed-dim": "#ffb3b6",
+                        "accent-green": "#16a34a", "accent-red": "#dc2626"
+                    },
+                    "borderRadius": { "DEFAULT": "0px", "lg": "2px", "xl": "4px", "full": "9999px" },
+                    "fontFamily": { "headline": ["Manrope"], "body": ["Inter"], "label": ["Inter"] }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-manrope { font-family: 'Manrope', sans-serif; }
+        .print-shadow { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .data-bar { transition: transform 0.3s ease; }
+        .data-bar:hover { transform: scaleY(1.05); }
+        /* Preserve some app logic styles without conflicting tailwind */
+        #amnesty-badge.active .badge-dot { background-color: var(--accent-red); }
+        /* Toast notification base */
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100;
+                 padding: 12px 24px; border-radius: 4px; color: white; font-weight: 600; opacity: 1; transition: all 0.3s; }
+        .toast.error { background: #ba1a1a; }
+        .toast.success { background: #006d4e; }
+        
+        /* Loading animation dots */
+        .spinner { border: 4px solid rgba(0,0,0,0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #006d4e; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .loading-steps .step { opacity: 0.3; transition: opacity 0.3s; margin: 4px 0; font-size: 0.9em; font-weight: 500;}
+        .loading-steps .step.active { opacity: 1; color: #006d4e; font-weight: bold;}
+        .loading-steps .step.done { opacity: 0.6; text-decoration: line-through; }
+    </style>
 </head>
-<body>
-    <!-- ═══ HEADER ═══ -->
-    <header id="app-header">
-        <div class="header-inner">
-            <div class="brand">
-                <div class="brand-icon">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                        <rect width="32" height="32" rx="8" fill="url(#brand-grad)"/>
-                        <path d="M8 16L14 10L20 16L26 10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M8 22L14 16L20 22L26 16" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <defs>
-                            <linearGradient id="brand-grad" x1="0" y1="0" x2="32" y2="32">
-                                <stop stop-color="#3b82f6"/>
-                                <stop offset="1" stop-color="#8b5cf6"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                </div>
-                <div>
-                    <h1>MSME Credit Risk Intelligence</h1>
-                    <p class="brand-sub">Synthetic Credit Analysis Platform</p>
-                </div>
+<body class="bg-surface-container-low text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 border-r border-outline-variant bg-white flex flex-col py-6 z-50">
+    <div class="px-6 mb-10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-white text-sm">shield</span>
             </div>
-            <div class="header-status" id="server-status">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
+            <div>
+                <div class="text-xl font-extrabold text-primary tracking-tight">RiskEngine Pro</div>
+                <div class="text-[10px] uppercase tracking-widest text-outline font-bold">MSME Credit Analysis</div>
             </div>
         </div>
-    </header>
+    </div>
+    <nav class="flex-1 space-y-1 px-3">
 
-    <!-- ═══ MAIN CONTENT ═══ -->
-    <main id="app-main">
+        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('dashboard')">
+            <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+            <span class="text-sm font-medium Inter">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="resetForm()">
+            <span class="material-symbols-outlined" data-icon="add_business">add_business</span>
+            <span class="text-sm font-medium Inter">Analyze Business</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('financials')">
+            <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+            <span class="text-sm font-medium Inter">Financial Analysis</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('network')">
+            <span class="material-symbols-outlined" data-icon="hub">hub</span>
+            <span class="text-sm font-medium Inter">Vendor Network</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('risk')">
+            <span class="material-symbols-outlined" data-icon="security">security</span>
+            <span class="text-sm font-medium Inter">Risk Analysis</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2 text-primary font-bold border-r-4 border-primary bg-primary-container/20 transition-colors duration-200 cursor-pointer" onclick="switchTab('all')">
+            <span class="material-symbols-outlined" data-icon="description">description</span>
+            <span class="text-sm font-bold Inter">Credit Report (All)</span>
+        </a>
 
-        <!-- ─── ANALYSIS FORM ─── -->
-        <section class="section-card form-section" id="form-section">
-            <div class="section-header">
-                <h2>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    Analyze Business
-                </h2>
-            </div>
-            <p class="form-intro">Enter a GSTIN to generate a comprehensive credit risk report. Business profile, financial data, and risk assessment will be generated automatically using ML models.</p>
+    </nav>
+    <div class="mt-auto px-6 pt-6 border-t border-outline-variant">
+        <button id="btn-new-analysis-sidebar" onclick="resetForm()" class="w-full bg-primary text-white py-3 rounded font-bold text-sm tracking-tight active:scale-95 transition-all">
+            New Analysis
+        </button>
+    </div>
+</aside>
 
-            <form id="analyze-form" autocomplete="off">
-                <div class="gstin-input-row">
-                    <div class="gstin-field">
-                        <label for="gstin-input">GSTIN</label>
-                        <input type="text" id="gstin-input" name="gstin"
-                               placeholder="e.g. 27ABCDE1234F1Z5" maxlength="15"
-                               required autocomplete="off" spellcheck="false">
-                        <span class="input-hint">15-character Goods &amp; Services Tax Identification Number</span>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-white border-b border-outline-variant flex items-center justify-between px-8 z-40">
+    <div class="flex items-center gap-6">
+        <span class="text-lg font-bold text-on-surface">Compliance View</span>
+        <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-sm">search</span>
+            <input class="bg-surface-container border border-outline-variant rounded py-1.5 pl-10 pr-4 text-xs w-64 focus:ring-1 focus:ring-primary focus:border-primary transition-all" placeholder="Search GSTIN Database..." type="text">
+        </div>
+    </div>
+    <div class="flex items-center gap-6">
+        <div id="server-status" class="flex items-center gap-2 mr-4 text-xs font-bold text-primary">
+            <span class="material-symbols-outlined text-sm status-dot">stop_circle</span>
+            <span class="status-text">Connecting...</span>
+        </div>
+        <div class="flex items-center gap-4 text-outline">
+            <span class="material-symbols-outlined hover:text-primary cursor-pointer transition-all" data-icon="notifications">notifications</span>
+        </div>
+        <div class="w-8 h-8 rounded border border-outline-variant overflow-hidden bg-surface-container-high flex justify-center items-center">
+            <span class="material-symbols-outlined text-outline">person</span>
+        </div>
+    </div>
+</header>
+
+<!-- Main Canvas -->
+<main id="app-main" class="ml-64 pt-24 px-12 pb-24 min-h-screen">
+    
+    <!-- ─── PROJECT LANDING DASHBOARD & FORM ─── -->
+    <section id="form-section" class="max-w-6xl mx-auto space-y-8">
+        
+        <!-- Platform Welcome Banner -->
+        <div class="bg-primary text-white border border-outline-variant p-10 flex flex-col gap-3 print-shadow shadow-md rounded-sm relative overflow-hidden">
+            <!-- Background aesthetic shape -->
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
+            
+            <h1 class="text-4xl font-extrabold tracking-tight relative z-10">RiskEngine Pro <span class="text-inverse-primary text-2xl">v4.2</span></h1>
+            <p class="text-inverse-on-surface font-medium leading-relaxed max-w-4xl text-sm relative z-10 opacity-90 mt-2">
+                Welcome to the centralized underwriting intelligence platform for MSME credit evaluation. RiskEngine Pro automatically evaluates vendor supply network topologies, flags circular GST trading fraud loops, identifies statutory compliance gaps with the Amnesty logic, and provides machine-learning driven loan decisions powered by neural SHAP explanations.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Left: Analyze Form -->
+            <div class="bg-white print-shadow border border-outline-variant p-8 space-y-6 flex flex-col justify-between rounded-sm">
+                <div>
+                   <h2 class="text-xl font-extrabold text-on-surface flex items-center gap-2 mb-2">
+                       <span class="material-symbols-outlined text-primary">account_balance</span>
+                       Analyze Business Entity
+                   </h2>
+                   <p class="text-[13px] font-medium text-on-surface-variant leading-relaxed mt-3">Enter a target GSTIN below. The system will aggregate financial data, model the vendor supply chain, deploy the neural fraud scanner, and render an underwriting profile instantly.</p>
+                </div>
+                <!-- Spacing fix: align-items-end to prevent unequal padding -->
+                <form id="analyze-form" autocomplete="off" class="flex flex-col gap-5 mt-4">
+                    <div>
+                        <label for="gstin-input" class="block text-[10px] text-outline font-black uppercase tracking-widest mb-2">Target GSTIN</label>
+                        <input type="text" id="gstin-input" name="gstin" placeholder="e.g. 27ABCDE1234F1Z5" maxlength="15" required autocomplete="off" spellcheck="false" class="w-full border border-outline-variant rounded-sm py-3 px-4 text-sm font-bold focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
                     </div>
-                    <button type="submit" id="analyze-btn" class="btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                        <span>Generate Report</span>
+                    <button type="submit" id="analyze-btn" class="w-full bg-primary text-white py-3.5 rounded-sm font-bold tracking-tight active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-[#005a40]">
+                        <span class="material-symbols-outlined mb-0.5 text-base">analytics</span> Generate Risk Dossier
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right: Amnesty Scheme Details -->
+            <div id="amnesty-section" class="bg-surface-bright print-shadow border border-outline-variant p-8 space-y-4 rounded-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-xl font-extrabold flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-tertiary">schedule</span>
+                            GST Amnesty Protocol
+                        </h2>
+                        <div id="amnesty-badge" class="flex items-center gap-2 bg-surface text-[10px] uppercase font-bold px-3 py-1 border border-outline-variant rounded">
+                            <span class="w-2 h-2 rounded-full bg-outline-variant badge-dot"></span>
+                            <span id="amnesty-badge-text">No Amnesty Active</span>
+                        </div>
+                    </div>
+                    <p class="text-[13px] text-on-surface-variant font-medium leading-relaxed mt-3">Register a governmental GST amnesty quarter. Underwriting penalties for late filings occurring within this sanctioned window will be mathematically suppressed by the engine.</p>
+                </div>
+                
+                <div class="flex items-end gap-3 pt-4 border-t border-outline-variant mt-4">
+                    <div class="w-1/3">
+                        <label class="text-[9px] font-black uppercase text-outline">Quarter</label>
+                        <input type="text" id="amnesty-quarter" placeholder="e.g. Q4-25" class="w-full border border-outline-variant rounded py-2 px-3 text-xs mt-1 bg-white">
+                    </div>
+                    <div class="w-1/3">
+                        <label class="text-[9px] font-black uppercase text-outline">Start Date</label>
+                        <input type="date" id="amnesty-start" class="w-full border border-outline-variant rounded py-2 px-2 text-xs mt-1 bg-white cursor-pointer">
+                    </div>
+                    <div class="w-1/3">
+                        <label class="text-[9px] font-black uppercase text-outline">End Date</label>
+                        <input type="date" id="amnesty-end" class="w-full border border-outline-variant rounded py-2 px-2 text-xs mt-1 bg-white cursor-pointer">
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between mt-2 flex-wrap gap-2">
+                    <div id="amnesty-windows-list" class="flex-1 space-y-1 text-[11px] font-medium w-full max-h-24 overflow-y-auto"></div>
+                    <button id="btn-register-amnesty" onclick="registerAmnesty()" class="w-full bg-surface-variant text-on-surface border border-outline-variant py-2.5 px-4 rounded-sm text-xs font-bold hover:bg-surface-dim transition-colors mt-2">
+                        Deploy Policy
                     </button>
                 </div>
-            </form>
-        </section>
+            </div>
+        </div>
+    </section>
 
-        <!-- ─── GST AMNESTY PANEL ─── -->
-        <section class="section-card amnesty-section" id="amnesty-section">
-            <div class="section-header">
-                <h2>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    GST Amnesty Scheme
-                </h2>
-                <div class="amnesty-badge" id="amnesty-badge">
-                    <span class="badge-dot"></span>
-                    <span id="amnesty-badge-text">No Amnesty Active</span>
+    <!-- ─── LOADING ─── -->
+    <section id="loading-section" style="display:none;" class="max-w-2xl mx-auto py-24 text-center">
+        <div class="flex flex-col items-center gap-6">
+            <div class="spinner"></div>
+            <h3 class="text-2xl font-extrabold text-on-surface">Analyzing Business...</h3>
+            <p class="text-outline text-sm">Generating synthetic data, scoring, and building report</p>
+            <div id="loading-steps" class="flex flex-col items-center mt-4">
+                <div class="step">Generating business profile</div>
+                <div class="step">Running credit scoring model</div>
+                <div class="step">Detecting fraud patterns</div>
+                <div class="step">Checking amnesty adjustments</div>
+                <div class="step">Building SHAP explanations</div>
+                <div class="step">Generating charts & PDF</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── RESULTS (INTEGRATED NEW DESIGN) ─── -->
+    <section id="results-section" style="display:none;">
+        <div class="max-w-6xl mx-auto space-y-8">
+            
+            <!-- Amnesty Banner -->
+            <div id="amnesty-banner" style="display:none;" class="bg-error-container border border-error p-4 flex gap-4 text-on-error-container">
+                <span class="material-symbols-outlined text-error">warning</span>
+                <div>
+                    <h4 id="amnesty-banner-title" class="font-bold text-sm">GST Amnesty Active</h4>
+                    <p id="amnesty-banner-detail" class="text-xs"></p>
+                    <div id="amnesty-adjustments" class="text-[10px] mt-2 font-mono"></div>
                 </div>
             </div>
-            <p class="form-intro">Register a government GST amnesty quarter. Late filings during this window will <strong>not</strong> penalise businesses &mdash; the model dynamically adjusts feature weights at inference time without retraining.</p>
 
-            <div class="amnesty-controls">
-                <div class="amnesty-form-row">
-                    <div class="amnesty-field">
-                        <label for="amnesty-quarter">Quarter</label>
-                        <input type="text" id="amnesty-quarter" placeholder="e.g. Q4-2025" spellcheck="false">
+            <!-- Printable Paper Container -->
+            <div class="bg-white print-shadow border border-outline-variant relative">
+                <!-- Top Design Accent -->
+                <div class="h-1 w-full bg-primary"></div>
+                
+                <div class="p-16 space-y-12">
+                    <!-- Header -->
+                    <div class="flex justify-between items-start">
+                        <div class="space-y-3">
+                            <div class="text-[10px] uppercase font-black text-primary tracking-[0.3em]">Institutional Credit Summary</div>
+                            <h1 id="b-name" class="text-4xl font-extrabold text-on-surface tracking-tight">Loading...</h1>
+                            <div class="flex items-center gap-4 text-xs font-medium text-outline">
+                                <span id="b-gstin" class="bg-surface-container-high px-2 py-0.5 rounded border border-outline-variant">GSTIN: -</span>
+                                <span class="text-outline/40">|</span>
+                                <span class="uppercase">Report Date: <script>document.write(new Date().toLocaleDateString())</script></span>
+                            </div>
+                        </div>
+                        <div class="text-right border-l-2 border-primary/20 pl-6 flex flex-col justify-end items-end gap-2">
+                            <button id="btn-download-pdf-app" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded font-bold text-xs tracking-tight shadow-sm hover:translate-y-[-1px] transition-all">
+                                <span class="material-symbols-outlined text-sm">download</span> Install PDF Report
+                            </button>
+                            <div>
+                                <div class="text-[10px] text-outline uppercase font-bold tracking-widest mt-2">Processing Time</div>
+                                <div class="text-[10px] font-bold text-on-surface mt-1" id="val-time"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="amnesty-field">
-                        <label for="amnesty-start">Start Date</label>
-                        <input type="date" id="amnesty-start">
+
+                    <!-- Section 1: Core Metrics -->
+                    <section id="view-dashboard" class="grid grid-cols-3 gap-8 report-section">
+                        <div class="p-6 border border-outline-variant bg-surface-bright" id="card-score">
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-6">Risk Pulse Score</div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-5xl font-extrabold text-on-surface" id="val-score">-</span>
+                                <span class="text-primary text-sm font-bold flex items-center" id="val-risk-band">-</span>
+                            </div>
+                            <div class="mt-4 h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                                <div id="score-fill" class="h-full bg-primary w-0 transition-all duration-1000"></div>
+                            </div>
+                            <div class="mt-3 text-[11px] text-outline italic">Market Baseline: 710</div>
+                        </div>
+
+                        <div class="p-6 border border-outline-variant bg-surface-bright" id="card-fraud">
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-6">Fraud Analysis</div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <span id="val-fraud-level" class="px-3 py-1 bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Loading...</span>
+                            </div>
+                            <p class="text-xs text-on-surface-variant leading-relaxed font-bold">Calculated Probability: <span id="val-fraud"></span></p>
+                            
+                            <!-- Detailed fraud indicators optionally inject here -->
+                            <div id="fraud-indicators-list" class="mt-2 text-[10px] text-error font-medium"></div>
+                        </div>
+
+                        <div class="p-6 border border-outline-variant bg-surface-bright" id="card-decision">
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-6">Underwriting Recommendation</div>
+                            <div id="val-decision" class="text-lg font-extrabold text-primary mb-4 uppercase">Loading...</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div class="text-[9px] text-outline font-bold uppercase">Rec. Exposure Limit</div>
+                                    <div id="val-loan-amt" class="text-sm font-bold text-on-surface">Rs. -</div>
+                                </div>
+                                <!-- Mock base rate just to keep mockup faithful -->
+                                <div>
+                                    <div class="text-[9px] text-outline font-bold uppercase">Base Rate</div>
+                                    <div class="text-sm font-bold text-on-surface">9.25% p.a.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Profile Detail Container -->
+                    <section id="view-profile" class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">Business Anatomy</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                        </div>
+                        <div id="profile-grid" class="grid grid-cols-4 gap-4 text-xs font-medium text-on-surface-variant border-l-2 border-primary/20 pl-4 py-2">
+                        </div>
+                    </section>
+
+                    <!-- Section 2: Visual Data -->
+                    <section id="view-financials" class="space-y-6 report-section">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">Financial Metrics & Signals</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-12 gap-y-8">
+                            <div class="col-span-2 border border-outline-variant p-4 w-full h-[400px]">
+                                <div id="chart-sales" class="w-full h-full"></div>
+                            </div>
+                            <div class="col-span-2 border border-outline-variant bg-white h-[400px] p-4 flex justify-center items-center">
+                                <div id="chart-turnover" class="w-full h-full"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 3: Network & Reach -->
+                    <section id="view-network" class="space-y-8 report-section">
+                        <div class="space-y-6">
+                            <div class="flex items-center gap-4">
+                                <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">Vendor & Client Flow Topology</h2>
+                                <div class="flex-1 h-px bg-outline-variant"></div>
+                            </div>
+                            <div class="border border-outline-variant bg-white p-4 h-[600px] flex justify-center items-center print-shadow">
+                                <div id="chart-network" class="w-full h-full"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- NEW text block explaining the Network Graph Fraud Details -->
+                        <div id="network-fraud-details" class="bg-surface-bright border border-error/50 p-7 rounded-sm shadow-sm relative">
+                             <!-- Decorative border line -->
+                             <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-error/80 rounded-l-sm"></div>
+                             <h3 class="text-sm font-extrabold text-error flex items-center gap-2 mb-3 tracking-tight"><span class="material-symbols-outlined text-base">device_hub</span> Transaction Cluster Analysis</h3>
+                             <p id="network-fraud-text" class="text-sm text-on-surface-variant leading-relaxed font-medium">Resolving topographical vectors ...</p>
+                        </div>
+                    </section>
+
+                    <!-- Section 4: Qualitative Analysis -->
+                    <section id="view-risk" class="space-y-6 report-section">
+                        <div class="grid grid-cols-2 gap-12 mb-12">
+                            <div class="border border-outline-variant p-4 w-full h-[400px]">
+                                <div id="chart-radar" class="w-full h-full"></div>
+                            </div>
+                            <div class="border border-outline-variant p-4 w-full h-[400px]">
+                                <div id="chart-gauge" class="w-full h-full"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">Neural Decision Drivers (SHAP)</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                        </div>
+                        
+                        <!-- Formatted Explanations dynamically written here by App.js -->
+                        <div id="explanations-list" class="w-full mt-4">
+                        </div>
+                        
+                        <div class="mt-8 border-t border-outline-variant pt-6">
+                           <h3 class="text-[10px] font-black uppercase tracking-widest text-outline mb-2">Automated Underwriting Notes</h3>
+                           <div id="decision-reasons" class="space-y-2 text-xs font-medium bg-surface-bright p-4 border border-outline-variant"></div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-16 py-8 border-t border-outline-variant bg-surface-container flex justify-between items-center">
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-base" style="font-variation-settings: 'FILL' 1;">verified</span>
+                            <span class="text-[10px] font-black text-on-surface uppercase tracking-wider">Validated by Engine V4.2</span>
+                        </div>
+                        <div class="h-4 w-px bg-outline-variant"></div>
+                        <div class="text-[10px] font-bold text-outline uppercase tracking-wider">Property of RiskEngine Pro — Restricted Access</div>
                     </div>
-                    <div class="amnesty-field">
-                        <label for="amnesty-end">End Date</label>
-                        <input type="date" id="amnesty-end">
-                    </div>
-                    <button class="btn-amnesty-register" id="btn-register-amnesty" onclick="registerAmnesty()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                        Register
-                    </button>
                 </div>
             </div>
-
-            <div class="amnesty-windows-list" id="amnesty-windows-list">
-                <!-- dynamically populated -->
-            </div>
-        </section>
-
-        <!-- ─── LOADING ─── -->
-        <section class="section-card loading-section" id="loading-section" style="display:none;">
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <h3>Analyzing Business...</h3>
-                <p>Generating synthetic data, scoring, and building report</p>
-                <div class="loading-steps" id="loading-steps">
-                    <div class="step active">Generating business profile</div>
-                    <div class="step">Running credit scoring model</div>
-                    <div class="step">Detecting fraud patterns</div>
-                    <div class="step">Checking amnesty adjustments</div>
-                    <div class="step">Building SHAP explanations</div>
-                    <div class="step">Generating charts &amp; PDF</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ─── RESULTS ─── -->
-        <section id="results-section" style="display:none;">
-
-            <!-- Amnesty Status Banner -->
-            <div class="amnesty-banner" id="amnesty-banner" style="display:none;">
-                <div class="amnesty-banner-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                </div>
-                <div class="amnesty-banner-content">
-                    <strong id="amnesty-banner-title">GST Amnesty Active</strong>
-                    <p id="amnesty-banner-detail"></p>
-                </div>
-                <div class="amnesty-adjustments" id="amnesty-adjustments"></div>
-            </div>
-
-            <!-- Summary Cards -->
-            <div class="summary-row">
-                <div class="summary-card card-score" id="card-score">
-                    <div class="card-label">Credit Score</div>
-                    <div class="card-value" id="val-score">&mdash;</div>
-                    <div class="card-sub" id="val-risk-band">&mdash;</div>
-                    <div class="score-bar"><div class="score-fill" id="score-fill"></div></div>
-                </div>
-                <div class="summary-card card-fraud" id="card-fraud">
-                    <div class="card-label">Fraud Probability</div>
-                    <div class="card-value" id="val-fraud">&mdash;</div>
-                    <div class="card-sub" id="val-fraud-level">&mdash;</div>
-                </div>
-                <div class="summary-card card-decision" id="card-decision">
-                    <div class="card-label">Loan Decision</div>
-                    <div class="card-value" id="val-decision">&mdash;</div>
-                    <div class="card-sub" id="val-loan-amt">&mdash;</div>
-                </div>
-                <div class="summary-card card-time">
-                    <div class="card-label">Analysis Time</div>
-                    <div class="card-value" id="val-time">&mdash;</div>
-                    <div class="card-sub">seconds</div>
-                </div>
-            </div>
-
-            <!-- Business Profile -->
-            <div class="section-card" id="profile-section">
-                <div class="section-header">
-                    <h2>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        Business Profile
-                    </h2>
-                    <button class="btn-download" id="btn-download-pdf">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Download PDF Report
-                    </button>
-                </div>
-                <div class="profile-grid" id="profile-grid"></div>
-            </div>
-
-            <!-- Decision Reasons -->
-            <div class="section-card" id="decision-section">
-                <div class="section-header">
-                    <h2>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        Loan Decision Details
-                    </h2>
-                </div>
-                <div id="decision-reasons"></div>
-            </div>
-
-            <!-- Charts Row -->
-            <div class="charts-grid">
-                <div class="section-card chart-card">
-                    <h3>Credit Score Gauge</h3>
-                    <img id="chart-gauge" alt="Credit Score Gauge" loading="lazy">
-                </div>
-                <div class="section-card chart-card">
-                    <h3>Risk Assessment Radar</h3>
-                    <img id="chart-radar" alt="Risk Radar" loading="lazy">
-                </div>
-            </div>
-            <div class="charts-grid">
-                <div class="section-card chart-card chart-wide">
-                    <h3>Monthly Sales Trend</h3>
-                    <img id="chart-sales" alt="Sales Timeline" loading="lazy">
-                </div>
-            </div>
-            <div class="charts-grid">
-                <div class="section-card chart-card chart-wide">
-                    <h3>Turnover Analysis</h3>
-                    <img id="chart-turnover" alt="Turnover Analysis" loading="lazy">
-                </div>
-            </div>
-            <div class="charts-grid">
-                <div class="section-card chart-card chart-wide">
-                    <h3>Vendor-Customer Network</h3>
-                    <img id="chart-network" alt="Network Graph" loading="lazy">
-                </div>
-            </div>
-
-            <!-- Risk Factors -->
-            <div class="section-card" id="risk-section">
-                <div class="section-header">
-                    <h2>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Key Risk Factors &amp; Explanations
-                    </h2>
-                </div>
-                <div id="explanations-list"></div>
-            </div>
-
-            <!-- Fraud Indicators -->
-            <div class="section-card" id="fraud-indicators-section" style="display:none;">
-                <div class="section-header">
-                    <h2>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        Fraud Indicators
-                    </h2>
-                </div>
-                <div id="fraud-indicators-list"></div>
-            </div>
-
-            <!-- New Analysis Button -->
-            <div class="center-action">
-                <button id="btn-new-analysis" class="btn-secondary" onclick="resetForm()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                    New Analysis
+            
+            <!-- Generate Buttons Array Outside the paper shadow -->
+            <div class="flex justify-end pt-8 gap-4 pb-12">
+                 <button id="btn-new-analysis" onclick="resetForm()" class="px-6 py-3 border border-outline-variant bg-white shadow hover:bg-surface text-on-surface rounded font-bold text-sm tracking-tight transition-all">
+                    Perform New Analysis
                 </button>
             </div>
-        </section>
-    </main>
+        </div>
+    </section>
 
-    <!-- ═══ FOOTER ═══ -->
-    <footer id="app-footer">
-        <p>MSME Credit Risk Intelligence Platform &middot; Synthetic Data Simulation &middot; Not for production use</p>
-    </footer>
-
-    <script src="/static/app.js"></script>
+</main>
+<script src="/static/app.js"></script>
 </body>
 </html>

@@ -215,8 +215,8 @@ def generate_pdf_report(business, charts_dir, output_dir):
         img = Image(gauge_path, width=350, height=220)
         elements.append(img)
 
-    # === SECTION 3: FRAUD RISK ===
-    elements.append(Paragraph("3. Fraud Risk Assessment", styles["SectionHeader"]))
+    # === SECTION 3: FRAUD RISK & TOPOLOGY ===
+    elements.append(Paragraph("3. Fraud Risk & Network Topology", styles["SectionHeader"]))
 
     fraud_prob = business.get("fraud_probability", 0)
 
@@ -228,7 +228,7 @@ def generate_pdf_report(business, charts_dir, output_dir):
         fraud_style = styles["AlertGreen"]
 
     elements.append(Paragraph(
-        "Fraud Probability: " + str(round(fraud_prob * 100)) + "%", fraud_style
+        "Calculated Fraud Probability: " + str(round(fraud_prob * 100)) + "%", fraud_style
     ))
 
     fraud_info = business.get("fraud_indicators", {})
@@ -248,10 +248,33 @@ def generate_pdf_report(business, charts_dir, output_dir):
             text = '<font color="' + sc + '">[!] [' + sev_upper + ']</font> ' + desc
             elements.append(Paragraph(text, styles["BodyText2"]))
 
+    elements.append(Spacer(1, 10))
+    # Move network chart to Section 3
+    network_path = os.path.join(charts_dir, "network_" + gstin + ".png")
+    if os.path.exists(network_path):
+        img_width = 460
+        img_height = 380
+        elements.append(Image(network_path, width=img_width, height=img_height))
+        
+        network = business.get("network_data", {})
+        circ_count = len(network.get("circular_trades", []))
+        if circ_count > 0:
+            analysis_text = f"<b>Topology Analysis:</b> The graph above highlights {circ_count} detected circular funding loops in red. These indicate potential invoice inflation where funds are shifted sequentially in closed-loop transactions back to the target entity."
+        else:
+            analysis_text = "<b>Topology Analysis:</b> Supply chain distribution appears linear. No closed-loop circular capital flows were detected among identical vendors and clients."
+        
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(analysis_text, styles["BodyText2"]))
+
     elements.append(PageBreak())
 
     # === SECTION 4: TURNOVER ESTIMATION ===
-    elements.append(Paragraph("4. Turnover Estimation", styles["SectionHeader"]))
+    elements.append(Paragraph("4. Turnover Estimation & Trajectory", styles["SectionHeader"]))
+    elements.append(Paragraph(
+        "A deep analytical scan of the vendor-customer transaction logs was performed to map the effective liquidity flowing "
+        "through this GSTIN. We aggregate the monthly volumetric transaction baselines and extrapolate potential annual yield.", styles["BodyText2"]
+    ))
+    elements.append(Spacer(1, 10))
 
     metrics = calculate_turnover_metrics(business)
     turnover_data = [
@@ -265,7 +288,7 @@ def generate_pdf_report(business, charts_dir, output_dir):
     turnover_table.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 10),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1565C0")),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A237E")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F5F5F5")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
@@ -275,15 +298,28 @@ def generate_pdf_report(business, charts_dir, output_dir):
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
     ]))
     elements.append(turnover_table)
+    elements.append(Spacer(1, 14))
+
+    vol_text = "Stable" if metrics["volatility_index"] < 0.2 else "Highly Volatile"
+    elements.append(Paragraph(
+        f"<b>Insight:</b> Revenue is classified as <i>{vol_text}</i> with a volatility index of {metrics['volatility_index']:.2f}. "
+        f"The {round(metrics['growth_rate']*100,1)}% growth rate significantly impacts the final credit boundary limit.", styles["BodyText2"]
+    ))
     elements.append(Spacer(1, 10))
 
     turnover_path = os.path.join(charts_dir, "turnover_" + gstin + ".png")
     if os.path.exists(turnover_path):
-        img = Image(turnover_path, width=480, height=170)
+        img = Image(turnover_path, width=480, height=205)
         elements.append(img)
+        elements.append(Spacer(1, 10))
 
     # === SECTION 5: GST FILING ANALYSIS ===
-    elements.append(Paragraph("5. GST Filing Analysis", styles["SectionHeader"]))
+    elements.append(Paragraph("5. GST Filing Integrity", styles["SectionHeader"]))
+    elements.append(Paragraph(
+        "Timely GST return filings serve as the primary proxy for statutory compliance and structural operational health. "
+        "Chronic delays or cancellations strongly correlate with ensuing defaults or fraudulent operations.", styles["BodyText2"]
+    ))
+    elements.append(Spacer(1, 10))
 
     gst = business.get("gst_behavior", {})
     gst_data = [
@@ -343,35 +379,36 @@ def generate_pdf_report(business, charts_dir, output_dir):
     ]))
     elements.append(net_table)
 
-    network_path = os.path.join(charts_dir, "network_" + gstin + ".png")
-    if os.path.exists(network_path):
-        elements.append(Spacer(1, 8))
-        img = Image(network_path, width=400, height=330)
-        elements.append(img)
-
     elements.append(PageBreak())
 
     # === SECTION 7: KEY RISK FACTORS ===
-    elements.append(Paragraph("7. Key Risk Factors", styles["SectionHeader"]))
+    elements.append(Paragraph("7. Key Risk Factors & Algorithmic Decisions", styles["SectionHeader"]))
 
     explanations = business.get("explanations", [])
     if explanations:
+        mitigants = []
+        risks = []
         for exp in explanations:
-            safe_exp = _safe_text(exp)
-            stripped = safe_exp.strip()
-            if stripped == "---":
-                elements.append(HRFlowable(
-                    width="80%", thickness=0.5,
-                    color=colors.HexColor("#CCCCCC")
-                ))
-            elif stripped.startswith("[!]") or stripped.startswith("- "):
-                elements.append(Paragraph(safe_exp, styles["AlertOrange"]))
-            elif stripped.startswith("+ "):
-                elements.append(Paragraph(safe_exp, styles["AlertGreen"]))
-            else:
-                elements.append(Paragraph(safe_exp, styles["BodyText2"]))
+            text = _safe_text(exp).strip()
+            if text.startswith('+') or text.startswith('  +'):
+                mitigants.append(text.replace('+', '').strip())
+            elif text.startswith('[!]') or text.startswith('  [!]'):
+                risks.append(text.replace('[!]', '').strip())
+            elif len(text) > 5 and text != '---' and 'score' not in text.lower() and 'probability' not in text.lower():
+                risks.append(text.replace('-', '').strip())
+        
+        if risks:
+            p_text = "<b>Critical Risk Drivers:</b> Our neural evaluation models have identified specific vulnerabilities in the enterprise. " + ". ".join(risks) + ". These statistical anomalies indicate elevated friction and should be closely reviewed prior to approval."
+            elements.append(Paragraph(p_text, styles["AlertRed"]))
+            elements.append(Spacer(1, 8))
+            
+        if mitigants:
+            p_text = "<b>Mitigating Strengths:</b> Despite potential risks, several positive attributes baseline the entity's profile. " + ". ".join(mitigants) + ". These elements mathematically offset the risk flags inside the neural scoring layer."
+            elements.append(Paragraph(p_text, styles["AlertGreen"]))
+            elements.append(Spacer(1, 8))
+            
     else:
-        elements.append(Paragraph("No specific risk factors identified.", styles["BodyText2"]))
+        elements.append(Paragraph("No specific risk factor narratives dynamically identified.", styles["BodyText2"]))
 
     sales_path = os.path.join(charts_dir, "sales_" + gstin + ".png")
     if os.path.exists(sales_path):
