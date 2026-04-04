@@ -244,6 +244,69 @@ async def reactivate_amnesty(quarter: str):
     }
 
 
+# ── Twist 2: Optional Amnesty Scoring Endpoint ───────────────────────────────────
+
+class ScoreRequest(BaseModel):
+    gstin: str
+    amnesty_quarter: Optional[str] = None
+    amnesty_start: Optional[str] = None
+    amnesty_end: Optional[str] = None
+    adjustment_strategy: str = Field("feature_level", description="either 'feature_level' or 'score_level'")
+
+@app.post("/api/score")
+async def score_business_endpoint(request: ScoreRequest):
+    """
+    Direct model scoring allowing for dynamic amnesty adjustment override.
+    Demonstrates adaptation to regulatory changes without retraining.
+    """
+    if not _models["ready"]:
+        raise HTTPException(503, "Models are still training. Please wait.")
+        
+    start_time = time.time()
+    from datetime import datetime
+    
+    # 1. Mock or build the target business record dynamically
+    target = _build_target_business(AnalyzeRequest(gstin=request.gstin))
+    
+    # Check if this specific request declares an active amnesty
+    amnesty_applied = False
+    if request.amnesty_quarter and request.amnesty_start and request.amnesty_end:
+        target["_amnesty_active_override"] = True
+        amnesty_applied = True
+        
+    # 2. Score business with approach approach A (feature) or B (score)
+    from credit_scoring.scorer import score_business, classify_risk_band
+    strategy = request.adjustment_strategy if amnesty_applied else "feature_level"
+    
+    credit_result = score_business(target, _models["credit_models"], adjustment_strategy=strategy)
+    target["credit_score"] = credit_result["credit_score"]
+    target["_credit_features"] = credit_result["features"]
+    
+    # 3. Handle SHAP directly
+    from explainability.shap_explainer import explain_credit_score
+    credit_shap = explain_credit_score(target, _models["credit_models"])
+    
+    # Build a raw explanation text
+    explanation_text = "Standard ML model penalty evaluation."
+    if amnesty_applied:
+        if strategy == "feature_level":
+            explanation_text = f"Amnesty applied at Feature-Layer: Late filing history zeroes out for {request.amnesty_quarter} before model evaluation."
+        else:
+            explanation_text = f"Amnesty applied at Score-Layer: Post-prediction score calibration bumped base credit score upwards."
+            
+    return {
+        "credit_score": target["credit_score"],
+        "risk_band": classify_risk_band(target["credit_score"]),
+        "adjusted_features": {
+            "late_filings_count": target["_credit_features"].get("late_filings_count"),
+            "months_not_filed": target["_credit_features"].get("months_not_filed"),
+            "amnesty_applied": 1 if amnesty_applied else 0
+        },
+        "explanation": explanation_text,
+        "timestamp": datetime.now().isoformat() + "Z",
+        "elapsed_seconds": round(time.time() - start_time, 3)
+    }
+
 # ── Twist 1: Advanced Fraud Ring Check ─────────────────────────────────────────
 
 class Transaction(BaseModel):

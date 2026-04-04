@@ -213,8 +213,16 @@ def compile_all_explanations(business: dict,
     Returns:
         Combined list of explanation strings
     """
+    from utils.amnesty_config import is_any_amnesty_active
+    
     credit_narr = generate_credit_narrative(business, credit_shap)
     fraud_narr = generate_fraud_narrative(business, fraud_shap)
 
-    all_explanations = credit_narr + ["\n---\n"] + fraud_narr
+    all_explanations = credit_narr.copy()
+    
+    if is_any_amnesty_active() or business.get("_amnesty_active_override", False):
+        all_explanations.append("\n[!] AMNESTY ADJUSTMENT APPLIED:")
+        all_explanations.append("  + GST filing delays during the approved amnesty period were entirely forgiven to protect MSME access to capital.")
+
+    all_explanations.extend(["\n---\n"] + fraud_narr)
     return all_explanations

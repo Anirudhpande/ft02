@@ -12,19 +12,20 @@ from credit_scoring.feature_builder import build_credit_features, get_feature_co
 from utils.constants import CREDIT_SCORE_MIN, CREDIT_SCORE_MAX
 
 
-def score_business(business: dict, models: dict) -> dict:
+def score_business(business: dict, models: dict, adjustment_strategy: str = "feature_level") -> dict:
     """
     Calculate credit score for a single business.
 
     Args:
         business: Complete business dictionary
         models: Dict with 'xgb_model', 'lgbm_model', 'feature_columns'
+        adjustment_strategy: "feature_level" or "score_level"
 
     Returns:
         Dict with 'credit_score', 'probability', and feature values
     """
     # Extract features
-    features = build_credit_features(business)
+    features = build_credit_features(business, amnesty_strategy=adjustment_strategy)
     feature_cols = models["feature_columns"]
 
     # Build feature DataFrame (preserves column names for LightGBM)
@@ -48,6 +49,18 @@ def score_business(business: dict, models: dict) -> dict:
 
     # Map to credit score range
     score = int(round(CREDIT_SCORE_MIN + probability * (CREDIT_SCORE_MAX - CREDIT_SCORE_MIN)))
+    
+    # ── Amnesty Score-Level Calibration ─────────────────────────────────────
+    if adjustment_strategy == "score_level":
+        from utils.amnesty_config import is_any_amnesty_active
+        if is_any_amnesty_active() or business.get("_amnesty_active_override", False):
+            # Calibrate score upwards since base model already penalised late filings
+            late = business.get("gst_behavior", {}).get("late_filings_count", 0)
+            months = business.get("gst_behavior", {}).get("months_not_filed", 0)
+            
+            penalty_relief = min(150, (late * 10) + (months * 15))
+            score += penalty_relief
+
     score = max(CREDIT_SCORE_MIN, min(CREDIT_SCORE_MAX, score))
 
     return {
