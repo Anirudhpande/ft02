@@ -339,7 +339,34 @@ function renderResults(data) {
     document.getElementById('chart-radar').src = data.charts.radar;
     document.getElementById('chart-sales').src = data.charts.sales;
     document.getElementById('chart-turnover').src = data.charts.turnover;
-    document.getElementById('chart-network').src = data.charts.network;
+    
+    // Network Graph Setup
+    const imgNetwork = document.getElementById('chart-network');
+    const iframeNetwork = document.getElementById('iframe-network');
+    const btnInteractive = document.getElementById('btn-interactive-graph');
+    
+    imgNetwork.src = data.charts.network;
+    imgNetwork.style.display = 'block';
+    iframeNetwork.style.display = 'none';
+    
+    if (data.charts.network_interactive) {
+        btnInteractive.style.display = 'block';
+        btnInteractive.textContent = 'View Interactive';
+        btnInteractive.onclick = () => {
+            if (iframeNetwork.style.display === 'none') {
+                iframeNetwork.src = data.charts.network_interactive;
+                iframeNetwork.style.display = 'block';
+                imgNetwork.style.display = 'none';
+                btnInteractive.textContent = 'View Static';
+            } else {
+                iframeNetwork.style.display = 'none';
+                imgNetwork.style.display = 'block';
+                btnInteractive.textContent = 'View Interactive';
+            }
+        };
+    } else {
+        btnInteractive.style.display = 'none';
+    }
 
     // Explanations
     const explDiv = document.getElementById('explanations-list');

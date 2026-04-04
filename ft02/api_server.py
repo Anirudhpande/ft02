@@ -409,7 +409,7 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     # Generate visualizations
     from visualizations.sales_chart import generate_sales_chart
     from visualizations.credit_gauge import generate_credit_gauge
-    from visualizations.fraud_network import generate_fraud_network
+    from visualizations.fraud_network import generate_fraud_network, generate_fraud_network_html
     from visualizations.risk_radar import generate_risk_radar
     from visualizations.turnover_chart import generate_turnover_chart
 
@@ -418,6 +418,7 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     generate_risk_radar(target, CHARTS_DIR)
     generate_turnover_chart(target, CHARTS_DIR)
     generate_fraud_network(target, CHARTS_DIR)
+    generate_fraud_network_html(target, STATIC_DIR)
 
     # Generate PDF
     from report_generation.pdf_report import generate_pdf_report
@@ -485,6 +486,7 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "radar": f"/api/chart/radar_{gstin}.png",
             "turnover": f"/api/chart/turnover_{gstin}.png",
             "network": f"/api/chart/network_{gstin}.png",
+            "network_interactive": f"/static/network_int_{gstin}.html",
         },
         "pdf_url": f"/api/report/{gstin}/pdf",
         "amnesty_status": _build_amnesty_status(target),

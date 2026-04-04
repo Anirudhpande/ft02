@@ -218,8 +218,12 @@
             </div>
             <div class="charts-grid">
                 <div class="section-card chart-card chart-wide">
-                    <h3>Vendor-Customer Network</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0;">Vendor-Customer Network</h3>
+                        <button id="btn-interactive-graph" class="btn-secondary" style="padding: 4px 12px; font-size: 13px; display: none;">View Interactive</button>
+                    </div>
                     <img id="chart-network" alt="Network Graph" loading="lazy">
+                    <iframe id="iframe-network" style="display: none; width: 100%; height: 600px; border: 1px solid var(--border); border-radius: 8px;"></iframe>
                 </div>
             </div>
 
