@@ -138,7 +138,7 @@ def generate_pdf_report(business, charts_dir, output_dir):
     elements = []
 
     # === TITLE PAGE ===
-    elements.append(Spacer(1, 40))
+    elements.append(Spacer(1, 16))
     elements.append(Paragraph("MSME Credit Risk Report", styles["ReportTitle"]))
     elements.append(Spacer(1, 8))
     elements.append(HRFlowable(
@@ -196,24 +196,12 @@ def generate_pdf_report(business, charts_dir, output_dir):
     # === SECTION 2: CREDIT SCORE ===
     elements.append(Paragraph("2. Credit Score Analysis", styles["SectionHeader"]))
 
-    score = business.get("credit_score", 0)
-    risk_band = classify_risk_band(score)
-
-    if score >= 700:
-        score_style = styles["AlertGreen"]
-    elif score >= 500:
-        score_style = styles["AlertOrange"]
-    else:
-        score_style = styles["AlertRed"]
-
-    elements.append(Paragraph("Credit Score: " + str(score) + " / 900", score_style))
-    elements.append(Paragraph("Risk Band: " + risk_band, score_style))
-    elements.append(Spacer(1, 8))
-
     gauge_path = os.path.join(charts_dir, "gauge_" + gstin + ".png")
     if os.path.exists(gauge_path):
-        img = Image(gauge_path, width=350, height=220)
+        img = Image(gauge_path, width=340, height=204)
+        img.hAlign = 'CENTER'
         elements.append(img)
+        elements.append(Spacer(1, 4))
 
     # === SECTION 3: FRAUD RISK & TOPOLOGY ===
     elements.append(Paragraph("3. Fraud Risk & Network Topology", styles["SectionHeader"]))
@@ -322,10 +310,22 @@ def generate_pdf_report(business, charts_dir, output_dir):
     elements.append(Spacer(1, 10))
 
     gst = business.get("gst_behavior", {})
+    raw_late = gst.get("late_filings_count", 0)
+    raw_months = gst.get("months_not_filed", 0)
+
+    # Check amnesty status
+    try:
+        from utils.amnesty_config import is_any_amnesty_active, get_active_amnesty_windows
+        amnesty_active = is_any_amnesty_active()
+        active_windows = get_active_amnesty_windows()
+    except Exception:
+        amnesty_active = False
+        active_windows = []
+
     gst_data = [
         ["Filing Frequency", str(gst.get("gst_filing_frequency", "N/A"))],
-        ["Late Filings", str(gst.get("late_filings_count", 0))],
-        ["Months Not Filed", str(gst.get("months_not_filed", 0))],
+        ["Late Filings", str(raw_late) + (" (amnesty: suppressed to 0)" if amnesty_active and raw_late > 0 else "")],
+        ["Months Not Filed", str(raw_months) + (" (amnesty: suppressed to 0)" if amnesty_active and raw_months > 0 else "")],
         ["Cancellation History", "Yes" if gst.get("gst_cancellation_history") else "No"],
         ["Multiple Registrations", "Yes" if gst.get("multiple_gst_registrations") else "No"],
     ]
@@ -342,12 +342,48 @@ def generate_pdf_report(business, charts_dir, output_dir):
     ]))
     elements.append(gst_table)
 
-    if gst.get("late_filings_count", 0) >= 5:
-        late_count = str(gst["late_filings_count"])
-        elements.append(Paragraph(
-            "[!] High late filings: " + late_count + " late filings detected",
-            styles["AlertRed"]
-        ))
+    # ── GST Amnesty Adjustment Notice ──
+    if amnesty_active:
+        elements.append(Spacer(1, 8))
+        amnesty_quarters = ", ".join(w.get("quarter", "N/A") for w in active_windows)
+        amnesty_box_data = [
+            ["GST AMNESTY SCHEME ACTIVE"],
+            ["Quarter(s): " + amnesty_quarters],
+        ]
+        adj_rows = []
+        if raw_late > 0:
+            adj_rows.append("late_filings_count: " + str(raw_late) + " -> 0 (suppressed)")
+        if raw_months > 0:
+            adj_rows.append("months_not_filed: " + str(raw_months) + " -> 0 (suppressed)")
+        if raw_late > 0 or raw_months > 0:
+            adj_rows.append("gst_compliance_score: recalculated without late-filing penalties")
+            adj_rows.append("filing_gap_score: reset to 0.0")
+        if adj_rows:
+            amnesty_box_data.append(["Feature Adjustments:"])
+            for row in adj_rows:
+                amnesty_box_data.append(["  " + row])
+        amnesty_box_data.append(["Note: Model weights were NOT retrained. Adjustments applied at feature layer."])
+
+        amnesty_table = Table(amnesty_box_data, colWidths=[460])
+        amnesty_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (0, 0), 11),
+            ("TEXTCOLOR", (0, 0), (0, 0), colors.HexColor("#1565C0")),
+            ("FONTSIZE", (0, 1), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E3F2FD")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1565C0")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(amnesty_table)
+    else:
+        if gst.get("late_filings_count", 0) >= 5:
+            late_count = str(gst["late_filings_count"])
+            elements.append(Paragraph(
+                "[!] High late filings: " + late_count + " late filings detected",
+                styles["AlertRed"]
+            ))
     if gst.get("gst_cancellation_history"):
         elements.append(Paragraph(
             "[!] GST registration was cancelled - significant red flag",
@@ -359,12 +395,13 @@ def generate_pdf_report(business, charts_dir, output_dir):
 
     network = business.get("network_data", {})
     dep_val = network.get("dependency_on_single_customer", 0)
+    circular_trades = network.get("circular_trades", [])
     net_data = [
         ["Vendors", str(network.get("vendor_count", 0))],
         ["Customers", str(network.get("customer_count", 0))],
         ["Concentration Ratio (HHI)", str(round(network.get("customer_concentration_ratio", 0), 4))],
         ["Max Single Customer %", str(round(dep_val * 100)) + "%"],
-        ["Circular Trades", str(len(network.get("circular_trades", [])))],
+        ["Circular Trades Detected", str(len(circular_trades))],
     ]
     net_table = Table(net_data, colWidths=[180, 280])
     net_table.setStyle(TableStyle([
@@ -379,6 +416,76 @@ def generate_pdf_report(business, charts_dir, output_dir):
     ]))
     elements.append(net_table)
 
+<<<<<<< HEAD
+=======
+    # ── Fraud Ring Detail ──
+    if circular_trades:
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph("Circular Fund Rotation (Fraud Rings)", styles["SubHeader"]))
+        elements.append(Paragraph(
+            "The following closed-loop money rotation patterns were detected in the "
+            "vendor-customer transaction graph. Each ring represents UPI funds being "
+            "rotated among connected MSMEs to artificially inflate transaction velocity.",
+            styles["BodyText2"]
+        ))
+        elements.append(Spacer(1, 6))
+
+        ring_header = [["Ring #", "Entities in Loop", "Rotated Funds (Rs.)"]]
+        ring_rows = []
+        for idx, ct in enumerate(circular_trades, 1):
+            path = ct.get("path", [])
+            # Abbreviate long GSTINs for readability
+            path_labels = []
+            for node in path:
+                if node == gstin:
+                    path_labels.append("TARGET")
+                elif len(node) > 10:
+                    path_labels.append(node[:6] + "..")
+                else:
+                    path_labels.append(node)
+            path_str = _safe_text(" -> ".join(path_labels))
+            funds = ct.get("rotated_funds", 0)
+            funds_str = "Rs." + format(int(funds), ",") if funds else "Unknown"
+            ring_rows.append([str(idx), path_str, funds_str])
+
+        ring_table = Table(ring_header + ring_rows, colWidths=[50, 300, 110])
+        ring_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#D32F2F")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFEBEE")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D32F2F")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#FFCDD2")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        elements.append(ring_table)
+
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(
+            "[!] ALERT: " + str(len(circular_trades)) + " closed-loop fund rotation pattern(s) detected. "
+            "These entities may be artificially inflating transaction velocity scores.",
+            styles["AlertRed"]
+        ))
+    else:
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(
+            "No circular fund rotation patterns detected in the transaction network.",
+            styles["AlertGreen"]
+        ))
+
+    # ── Network Graph Image ──
+    network_path = os.path.join(charts_dir, "network_" + gstin + ".png")
+    if os.path.exists(network_path):
+        elements.append(Spacer(1, 6))
+        img = Image(network_path, width=380, height=300)
+        img.hAlign = 'CENTER'
+        elements.append(img)
+
+>>>>>>> e5e9dc17e9032bdcb91cd93be0d8f0253a82f369
     elements.append(PageBreak())
 
     # === SECTION 7: KEY RISK FACTORS ===
@@ -412,16 +519,18 @@ def generate_pdf_report(business, charts_dir, output_dir):
 
     sales_path = os.path.join(charts_dir, "sales_" + gstin + ".png")
     if os.path.exists(sales_path):
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 8))
         elements.append(Paragraph("Monthly Sales Trend:", styles["SubHeader"]))
-        img = Image(sales_path, width=480, height=200)
+        img = Image(sales_path, width=460, height=190)
+        img.hAlign = 'CENTER'
         elements.append(img)
 
     radar_path = os.path.join(charts_dir, "radar_" + gstin + ".png")
     if os.path.exists(radar_path):
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 8))
         elements.append(Paragraph("Risk Assessment Radar:", styles["SubHeader"]))
-        img = Image(radar_path, width=350, height=350)
+        img = Image(radar_path, width=280, height=280)
+        img.hAlign = 'CENTER'
         elements.append(img)
 
     # === SECTION 8: LOAN DECISION ===
@@ -431,26 +540,46 @@ def generate_pdf_report(business, charts_dir, output_dir):
     decision = business.get("loan_decision", {})
     if decision:
         dec = decision.get("decision", "N/A")
-        dec_styles = {
-            "APPROVE": styles["AlertGreen"],
-            "REJECT": styles["AlertRed"],
-            "REVIEW": styles["AlertOrange"],
-        }
-        dec_style = dec_styles.get(dec, styles["BodyText2"])
-
-        elements.append(Paragraph("Decision: " + dec, dec_style))
         loan_amt = decision.get("recommended_loan_amount", 0)
-        elements.append(Paragraph(
-            "Recommended Loan: Rs." + format(loan_amt, ","),
-            styles["BodyText2"]
-        ))
-        elements.append(Spacer(1, 8))
+
+        # Decision color mapping
+        dec_color_map = {
+            "APPROVE": ("#388E3C", "#E8F5E9"),
+            "REJECT": ("#D32F2F", "#FFEBEE"),
+            "REVIEW": ("#F57F17", "#FFF8E1"),
+        }
+        text_c, bg_c = dec_color_map.get(dec, ("#333333", "#F5F5F5"))
+
+        loan_data = [
+            ["Decision", dec],
+            ["Estimated Recommended Loan", "Rs. " + format(loan_amt, ",")],
+            ["Credit Score", str(business.get("credit_score", 0)) + " / 900"],
+            ["Fraud Probability", str(round(business.get("fraud_probability", 0) * 100)) + "%"],
+        ]
+        loan_table = Table(loan_data, colWidths=[180, 280])
+        loan_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTNAME", (1, 0), (1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 11),
+            ("TEXTCOLOR", (1, 0), (1, 0), colors.HexColor(text_c)),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(bg_c)),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FAFAFA")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor(text_c)),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E0E0E0")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(loan_table)
+        elements.append(Spacer(1, 10))
 
         reasons = decision.get("reasons", [])
         if reasons:
             elements.append(Paragraph("Reasoning:", styles["SubHeader"]))
-            for r in reasons:
-                elements.append(Paragraph("* " + _safe_text(r), styles["BodyText2"]))
+            for idx, r in enumerate(reasons, 1):
+                elements.append(Paragraph(
+                    str(idx) + ". " + _safe_text(r), styles["BodyText2"]
+                ))
 
     # Footer
     elements.append(Spacer(1, 30))

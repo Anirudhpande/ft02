@@ -10,12 +10,13 @@ import numpy as np
 from utils.amnesty_config import is_any_amnesty_active
 
 
-def build_credit_features(business: dict) -> dict:
+def build_credit_features(business: dict, amnesty_strategy: str = "feature_level") -> dict:
     """
     Extract credit scoring features from a business record.
 
     Args:
         business: Complete business dictionary
+        amnesty_strategy: "feature_level" or "score_level"
 
     Returns:
         Dict of numerical features for ML model
@@ -43,13 +44,8 @@ def build_credit_features(business: dict) -> dict:
     multi_registration = 1 if gst.get("multiple_gst_registrations", False) else 0
 
     # ── GST Amnesty Adjustment ──────────────────────────────────────────────
-    # When the government declares an amnesty quarter, late filings during
-    # that window must NOT penalise the MSME.  We dynamically zero out the
-    # late-filing contribution to the compliance score (and clamp the raw
-    # feature values fed to the ML model) so that the trained model sees
-    # them as benign — without retraining.
-    amnesty_active = is_any_amnesty_active()
-    if amnesty_active:
+    amnesty_active = is_any_amnesty_active() or business.get("_amnesty_active_override", False)
+    if amnesty_active and amnesty_strategy == "feature_level":
         late_filings_for_scoring = 0
         months_not_filed_for_scoring = 0
     else:
