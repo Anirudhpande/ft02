@@ -212,7 +212,8 @@ def generate_pdf_report(business, charts_dir, output_dir):
 
     gauge_path = os.path.join(charts_dir, "gauge_" + gstin + ".png")
     if os.path.exists(gauge_path):
-        img = Image(gauge_path, width=350, height=220)
+        img = Image(gauge_path, width=350, height=175)
+        img.hAlign = 'CENTER'
         elements.append(img)
 
     # === SECTION 3: FRAUD RISK ===
