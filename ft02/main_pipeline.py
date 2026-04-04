@@ -1,5 +1,5 @@
 """
-MSME Credit Risk Simulation Platform — Main Pipeline
+FinRisk-Lab — Main Pipeline
 
 Entry point that orchestrates the complete simulation:
 1. Generate synthetic businesses
@@ -32,7 +32,7 @@ if PROJECT_ROOT not in sys.path:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MSME Credit Risk Simulation Platform"
+        description="FinRisk-Lab Simulation Platform"
     )
     parser.add_argument(
         "--count", type=int, default=200,
@@ -55,7 +55,7 @@ def main():
     start_time = time.time()
 
     print("=" * 70)
-    print("  MSME Credit Risk Simulation Platform")
+    print("  FinRisk-Lab — Simulation Platform")
     print("=" * 70)
     print(f"  Businesses: {args.count}")
     print(f"  Seed: {args.seed}")

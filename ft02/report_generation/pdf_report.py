@@ -139,7 +139,7 @@ def generate_pdf_report(business, charts_dir, output_dir):
 
     # === TITLE PAGE ===
     elements.append(Spacer(1, 16))
-    elements.append(Paragraph("MSME Credit Risk Report", styles["ReportTitle"]))
+    elements.append(Paragraph("FinRisk-Lab — Credit Risk Report", styles["ReportTitle"]))
     elements.append(Spacer(1, 8))
     elements.append(HRFlowable(
         width="100%", thickness=2,
@@ -591,7 +591,7 @@ def generate_pdf_report(business, charts_dir, output_dir):
     )
     footer_text = (
         "Report generated on " + datetime.now().strftime("%d %B %Y at %H:%M") +
-        " | MSME Credit Risk Platform | Confidential"
+        " | FinRisk-Lab | Confidential"
     )
     elements.append(Paragraph(footer_text, footer_style))
 

@@ -1,5 +1,5 @@
 /**
- * MSME Credit Risk Intelligence — Frontend Logic
+ * FinRisk-Lab — Frontend Logic
  * With GST Amnesty Scheme Management (Twist 2)
  */
 

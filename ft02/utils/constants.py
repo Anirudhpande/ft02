@@ -1,5 +1,5 @@
 """
-Constants and Configuration for MSME Credit Risk Platform
+Constants and Configuration for FinRisk-Lab
 
 Contains sector definitions, distribution parameters, location data,
 and business name components used across all generation modules.

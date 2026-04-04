@@ -1,5 +1,5 @@
 """
-MSME Credit Risk Intelligence — API Server
+FinRisk-Lab — API Server
 
 FastAPI backend that serves the credit risk analysis platform.
 Models are pre-trained on startup for fast per-GSTIN analysis.
@@ -31,8 +31,8 @@ if PROJECT_ROOT not in sys.path:
 
 # ── FastAPI App ─────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="MSME Credit Risk Intelligence",
-    description="Credit risk analysis platform for MSMEs",
+    title="FinRisk-Lab",
+    description="AI-powered MSME credit risk analysis with fraud ring detection and GST amnesty overrides",
     version="1.0.0",
 )
 
@@ -112,7 +112,7 @@ async def startup_train_models():
     warnings.filterwarnings("ignore")
 
     print("\n" + "=" * 60)
-    print("  MSME Credit Risk Intelligence — Starting Up")
+    print("  FinRisk-Lab — Starting Up")
     print("=" * 60)
     print("[Startup] Pre-training ML models...")
 
