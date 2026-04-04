@@ -371,25 +371,70 @@ function renderResults(data) {
     // Explanations
     const explDiv = document.getElementById('explanations-list');
     explDiv.innerHTML = '';
+    
+    // Add Recommended Loan Block explicitly
+    if (data.decision !== 'REJECTED') {
+        const loanBlock = document.createElement('div');
+        loanBlock.className = 'explanation-card highlight-loan';
+        loanBlock.innerHTML = `
+            <div class="card-indicator" style="background: var(--accent-blue);"></div>
+            <div class="card-content">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span style="font-weight: bold; margin-left:8px;">Estimated Recommended Loan: Rs. ${data.recommended_loan_amount.toLocaleString('en-IN')}</span>
+            </div>
+        `;
+        explDiv.appendChild(loanBlock);
+    }
+    
+    let expCounter = 1;
     data.explanations.forEach(exp => {
-        const div = document.createElement('div');
         const stripped = exp.trim();
-        if (stripped === '---' || stripped === '') {
-            div.className = 'explanation-item separator';
-        } else if (stripped.startsWith('Credit score') || stripped.startsWith('Fraud probability')) {
-            div.className = 'explanation-item header';
-            div.textContent = stripped;
-        } else if (stripped.startsWith('+ ') || stripped.startsWith('  +')) {
-            div.className = 'explanation-item positive';
-            div.textContent = stripped;
-        } else if (stripped.startsWith('[!]') || stripped.startsWith('  [!]')) {
-            div.className = 'explanation-item negative';
-            div.textContent = stripped;
-        } else {
-            div.className = 'explanation-item';
-            div.textContent = stripped;
+        if (stripped === '---' || stripped === '' || stripped.includes('Factors supporting') || stripped.includes('Factors reducing') || stripped.includes('Fraud risk factors:')) {
+            return; // Skip separators and plain descriptive headers
         }
-        explDiv.appendChild(div);
+        
+        const isHeader = stripped.startsWith('Credit score') || stripped.startsWith('Fraud probability');
+        if (isHeader) {
+            const headerDiv = document.createElement('h4');
+            headerDiv.style.marginTop = '16px';
+            headerDiv.style.marginBottom = '8px';
+            headerDiv.style.color = 'var(--text-muted)';
+            headerDiv.textContent = stripped;
+            explDiv.appendChild(headerDiv);
+            expCounter = 1; // reset counter per section
+            return;
+        }
+
+        const isPositive = stripped.startsWith('+') || stripped.startsWith('  +') || stripped.includes('[!] AMNESTY');
+        const isNegative = stripped.startsWith('[!]') || stripped.startsWith('  [!]');
+        const isAmnesty = stripped.toLowerCase().includes('amnesty');
+        
+        // Cleanup prefix
+        let cleanText = stripped.replace(/^\+/, '').replace(/^\[!\]/, '').replace(/^\s*\+/, '').replace(/^\s*\[!\]/, '').trim();
+        
+        const card = document.createElement('div');
+        card.className = `explanation-card ${isPositive ? 'positive' : (isNegative && !isAmnesty ? 'negative' : 'neutral')}`;
+        
+        // Choose SVG icon
+        let iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+        if (isNegative && !isAmnesty) {
+            iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"/><polyline points="16 6 23 6 23 13"/></svg>`;
+        }
+        if (isAmnesty) {
+            iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+        }
+
+        card.innerHTML = `
+            <div class="card-indicator"></div>
+            <div class="card-content">
+                <div class="icon-wrap">${iconSvg}</div>
+                <span class="exp-counter">#${expCounter}</span>
+                <span class="exp-text">${cleanText}</span>
+            </div>
+        `;
+        
+        explDiv.appendChild(card);
+        expCounter++;
     });
 
     // Fraud indicators

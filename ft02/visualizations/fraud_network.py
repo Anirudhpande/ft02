@@ -204,7 +204,7 @@ def generate_fraud_network_html(business: dict, output_dir: str) -> str:
         else:
             net.add_edge(u, v, title=title, weight=amt, color="#f59e0b", width=1.5)
 
-    net.set_options(\"""
+    net.set_options("""
     var options = {
       "nodes": {
         "borderWidth": 2,
@@ -233,7 +233,7 @@ def generate_fraud_network_html(business: dict, output_dir: str) -> str:
         "solver": "forceAtlas2Based"
       }
     }
-    \""")
+    """)
     
     filepath = os.path.join(output_dir, f"network_int_{gstin}.html")
     net.write_html(filepath)
