@@ -1,4 +1,4 @@
-# MSME Risk Intelligence Platform
+# FinRisk-Lab
 
 A behavior-driven risk intelligence system designed to analyze MSME (Micro, Small & Medium Enterprises) financial activity using alternative data signals. The platform enables fraud detection, continuous risk monitoring, explainable credit scoring, and adaptive decision-making for lending.
 
