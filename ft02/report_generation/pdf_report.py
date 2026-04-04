@@ -138,7 +138,7 @@ def generate_pdf_report(business, charts_dir, output_dir):
     elements = []
 
     # === TITLE PAGE ===
-    elements.append(Spacer(1, 40))
+    elements.append(Spacer(1, 16))
     elements.append(Paragraph("MSME Credit Risk Report", styles["ReportTitle"]))
     elements.append(Spacer(1, 8))
     elements.append(HRFlowable(
@@ -196,24 +196,12 @@ def generate_pdf_report(business, charts_dir, output_dir):
     # === SECTION 2: CREDIT SCORE ===
     elements.append(Paragraph("2. Credit Score Analysis", styles["SectionHeader"]))
 
-    score = business.get("credit_score", 0)
-    risk_band = classify_risk_band(score)
-
-    if score >= 700:
-        score_style = styles["AlertGreen"]
-    elif score >= 500:
-        score_style = styles["AlertOrange"]
-    else:
-        score_style = styles["AlertRed"]
-
-    elements.append(Paragraph("Credit Score: " + str(score) + " / 900", score_style))
-    elements.append(Paragraph("Risk Band: " + risk_band, score_style))
-    elements.append(Spacer(1, 8))
-
     gauge_path = os.path.join(charts_dir, "gauge_" + gstin + ".png")
     if os.path.exists(gauge_path):
-        img = Image(gauge_path, width=350, height=220)
+        img = Image(gauge_path, width=340, height=204)
+        img.hAlign = 'CENTER'
         elements.append(img)
+        elements.append(Spacer(1, 4))
 
     # === SECTION 3: FRAUD RISK ===
     elements.append(Paragraph("3. Fraud Risk Assessment", styles["SectionHeader"]))
@@ -454,8 +442,9 @@ def generate_pdf_report(business, charts_dir, output_dir):
     # ── Network Graph Image ──
     network_path = os.path.join(charts_dir, "network_" + gstin + ".png")
     if os.path.exists(network_path):
-        elements.append(Spacer(1, 8))
-        img = Image(network_path, width=400, height=330)
+        elements.append(Spacer(1, 6))
+        img = Image(network_path, width=380, height=300)
+        img.hAlign = 'CENTER'
         elements.append(img)
 
     elements.append(PageBreak())
@@ -484,16 +473,18 @@ def generate_pdf_report(business, charts_dir, output_dir):
 
     sales_path = os.path.join(charts_dir, "sales_" + gstin + ".png")
     if os.path.exists(sales_path):
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 8))
         elements.append(Paragraph("Monthly Sales Trend:", styles["SubHeader"]))
-        img = Image(sales_path, width=480, height=200)
+        img = Image(sales_path, width=460, height=190)
+        img.hAlign = 'CENTER'
         elements.append(img)
 
     radar_path = os.path.join(charts_dir, "radar_" + gstin + ".png")
     if os.path.exists(radar_path):
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 8))
         elements.append(Paragraph("Risk Assessment Radar:", styles["SubHeader"]))
-        img = Image(radar_path, width=350, height=350)
+        img = Image(radar_path, width=280, height=280)
+        img.hAlign = 'CENTER'
         elements.append(img)
 
     # === SECTION 8: LOAN DECISION ===
@@ -503,26 +494,46 @@ def generate_pdf_report(business, charts_dir, output_dir):
     decision = business.get("loan_decision", {})
     if decision:
         dec = decision.get("decision", "N/A")
-        dec_styles = {
-            "APPROVE": styles["AlertGreen"],
-            "REJECT": styles["AlertRed"],
-            "REVIEW": styles["AlertOrange"],
-        }
-        dec_style = dec_styles.get(dec, styles["BodyText2"])
-
-        elements.append(Paragraph("Decision: " + dec, dec_style))
         loan_amt = decision.get("recommended_loan_amount", 0)
-        elements.append(Paragraph(
-            "Recommended Loan: Rs." + format(loan_amt, ","),
-            styles["BodyText2"]
-        ))
-        elements.append(Spacer(1, 8))
+
+        # Decision color mapping
+        dec_color_map = {
+            "APPROVE": ("#388E3C", "#E8F5E9"),
+            "REJECT": ("#D32F2F", "#FFEBEE"),
+            "REVIEW": ("#F57F17", "#FFF8E1"),
+        }
+        text_c, bg_c = dec_color_map.get(dec, ("#333333", "#F5F5F5"))
+
+        loan_data = [
+            ["Decision", dec],
+            ["Estimated Recommended Loan", "Rs. " + format(loan_amt, ",")],
+            ["Credit Score", str(business.get("credit_score", 0)) + " / 900"],
+            ["Fraud Probability", str(round(business.get("fraud_probability", 0) * 100)) + "%"],
+        ]
+        loan_table = Table(loan_data, colWidths=[180, 280])
+        loan_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTNAME", (1, 0), (1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 11),
+            ("TEXTCOLOR", (1, 0), (1, 0), colors.HexColor(text_c)),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(bg_c)),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FAFAFA")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor(text_c)),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E0E0E0")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(loan_table)
+        elements.append(Spacer(1, 10))
 
         reasons = decision.get("reasons", [])
         if reasons:
             elements.append(Paragraph("Reasoning:", styles["SubHeader"]))
-            for r in reasons:
-                elements.append(Paragraph("* " + _safe_text(r), styles["BodyText2"]))
+            for idx, r in enumerate(reasons, 1):
+                elements.append(Paragraph(
+                    str(idx) + ". " + _safe_text(r), styles["BodyText2"]
+                ))
 
     # Footer
     elements.append(Spacer(1, 30))

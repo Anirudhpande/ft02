@@ -98,15 +98,9 @@ class AnalyzeResponse(BaseModel):
     purchase_summary: dict
     charts: dict
     pdf_url: str
+    circular_trades_detail: list
     amnesty_status: dict
     elapsed_seconds: float
-
-
-class AmnestyRequest(BaseModel):
-    quarter: str = Field(..., description="Amnesty quarter label, e.g. Q4-2025")
-    start_date: str = Field(..., description="Start date ISO format, e.g. 2025-10-01")
-    end_date: str = Field(..., description="End date ISO format, e.g. 2025-12-31")
-    description: Optional[str] = Field(None, description="Amnesty description")
 
 
 # ── Startup: Pre-train models ──────────────────────────────────────────────────
@@ -168,10 +162,27 @@ async def health_check():
     }
 
 
+@app.get("/api/sectors")
+async def list_sectors():
+    from utils.constants import SECTORS
+    sectors = []
+    for name, info in SECTORS.items():
+        sectors.append({
+            "name": name,
+            "risk_score": info["risk_score"],
+            "turnover_range": info["typical_turnover_range"],
+        })
     return {"sectors": sectors}
 
 
 # ── Amnesty Management Endpoints ───────────────────────────────────────────────
+
+class AmnestyRequest(BaseModel):
+    quarter: str = Field(..., description="Amnesty quarter label, e.g. Q4-2025")
+    start_date: str = Field(..., description="Start date ISO format, e.g. 2025-10-01")
+    end_date: str = Field(..., description="End date ISO format, e.g. 2025-12-31")
+    description: Optional[str] = Field(None, description="Amnesty description")
+
 
 @app.get("/api/amnesty")
 async def list_amnesty_windows():
@@ -231,6 +242,110 @@ async def reactivate_amnesty(quarter: str):
         "success": True,
         "message": f"Amnesty window '{quarter}' re-activated.",
         "amnesty_active": is_any_amnesty_active(),
+    }
+
+
+# ── Twist 2: Optional Amnesty Scoring Endpoint ───────────────────────────────────
+
+class ScoreRequest(BaseModel):
+    gstin: str
+    amnesty_quarter: Optional[str] = None
+    amnesty_start: Optional[str] = None
+    amnesty_end: Optional[str] = None
+    adjustment_strategy: str = Field("feature_level", description="either 'feature_level' or 'score_level'")
+
+@app.post("/api/score")
+async def score_business_endpoint(request: ScoreRequest):
+    """
+    Direct model scoring allowing for dynamic amnesty adjustment override.
+    Demonstrates adaptation to regulatory changes without retraining.
+    """
+    if not _models["ready"]:
+        raise HTTPException(503, "Models are still training. Please wait.")
+        
+    start_time = time.time()
+    from datetime import datetime
+    
+    # 1. Mock or build the target business record dynamically
+    target = _build_target_business(AnalyzeRequest(gstin=request.gstin))
+    
+    # Check if this specific request declares an active amnesty
+    amnesty_applied = False
+    if request.amnesty_quarter and request.amnesty_start and request.amnesty_end:
+        target["_amnesty_active_override"] = True
+        amnesty_applied = True
+        
+    # 2. Score business with approach approach A (feature) or B (score)
+    from credit_scoring.scorer import score_business, classify_risk_band
+    strategy = request.adjustment_strategy if amnesty_applied else "feature_level"
+    
+    credit_result = score_business(target, _models["credit_models"], adjustment_strategy=strategy)
+    target["credit_score"] = credit_result["credit_score"]
+    target["_credit_features"] = credit_result["features"]
+    
+    # 3. Handle SHAP directly
+    from explainability.shap_explainer import explain_credit_score
+    credit_shap = explain_credit_score(target, _models["credit_models"])
+    
+    # Build a raw explanation text
+    explanation_text = "Standard ML model penalty evaluation."
+    if amnesty_applied:
+        if strategy == "feature_level":
+            explanation_text = f"Amnesty applied at Feature-Layer: Late filing history zeroes out for {request.amnesty_quarter} before model evaluation."
+        else:
+            explanation_text = f"Amnesty applied at Score-Layer: Post-prediction score calibration bumped base credit score upwards."
+            
+    return {
+        "credit_score": target["credit_score"],
+        "risk_band": classify_risk_band(target["credit_score"]),
+        "adjusted_features": {
+            "late_filings_count": target["_credit_features"].get("late_filings_count"),
+            "months_not_filed": target["_credit_features"].get("months_not_filed"),
+            "amnesty_applied": 1 if amnesty_applied else 0
+        },
+        "explanation": explanation_text,
+        "timestamp": datetime.now().isoformat() + "Z",
+        "elapsed_seconds": round(time.time() - start_time, 3)
+    }
+
+# ── Twist 1: Advanced Fraud Ring Check ─────────────────────────────────────────
+
+class Transaction(BaseModel):
+    sender: str
+    receiver: str
+    amount: float
+    timestamp: str
+
+class FraudCheckRequest(BaseModel):
+    transactions: List[Transaction]
+
+@app.post("/api/fraud-check")
+async def check_fraud_rings(request: FraudCheckRequest):
+    """
+    Advanced standalone endpoint to identify circular money rotation.
+    Takes raw UPI transactions with timestamps and exact amounts.
+    Returns PyVis HTML URL and complete cyclic insights.
+    """
+    from fraud_detection.network_analyzer import analyze_transaction_network, generate_interactive_pyvis
+    import time, os
+    
+    tx_dicts = [tx.model_dump() for tx in request.transactions]
+    analysis = analyze_transaction_network(tx_dicts, time_window_hours=48)
+    
+    html_file = f"fraud_graph_{int(time.time())}.html"
+    static_folder = os.path.join(PROJECT_ROOT, "static")
+    output_path = os.path.join(static_folder, html_file)
+    
+    # Generate PyVis chart
+    generate_interactive_pyvis(analysis["graph"], analysis["detected_cycles"], output_path)
+    
+    return {
+        "fraud_flag": analysis["fraud_flag"],
+        "fraud_score": analysis["fraud_score"],
+        "fraud_type": analysis["fraud_type"],
+        "involved_entities": analysis["involved_entities"],
+        "detected_cycles": analysis["detected_cycles"],
+        "visualization_url": f"/static/{html_file}"
     }
 
 
@@ -358,7 +473,7 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     # Generate visualizations
     from visualizations.sales_chart import generate_sales_chart
     from visualizations.credit_gauge import generate_credit_gauge
-    from visualizations.fraud_network import generate_fraud_network
+    from visualizations.fraud_network import generate_fraud_network, generate_fraud_network_html
     from visualizations.risk_radar import generate_risk_radar
     from visualizations.turnover_chart import generate_turnover_chart
 
@@ -367,6 +482,12 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     generate_risk_radar(target, CHARTS_DIR)
     generate_turnover_chart(target, CHARTS_DIR)
     generate_fraud_network(target, CHARTS_DIR)
+    generate_fraud_network_html(target, STATIC_DIR)
+
+    # Generate dedicated fraud ring topology chart
+    from visualizations.fraud_ring_chart import generate_fraud_ring_chart, generate_fraud_ring_html
+    fraud_ring_path = generate_fraud_ring_chart(target, CHARTS_DIR)
+    fraud_ring_html = generate_fraud_ring_html(target, STATIC_DIR)
 
     # Generate PDF
     from report_generation.pdf_report import generate_pdf_report
@@ -425,6 +546,14 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "dependency_single_customer": network.get("dependency_on_single_customer", 0),
             "circular_trades": len(network.get("circular_trades", [])),
         },
+        "circular_trades_detail": [
+            {
+                "path": ct.get("path", []),
+                "rotated_funds": ct.get("rotated_funds", 0),
+                "type": ct.get("type", "circular_trading"),
+            }
+            for ct in network.get("circular_trades", [])
+        ],
         "purchase_summary": {
             "purchase_to_sales_ratio": target.get("purchase_data", {}).get("purchase_to_sales_ratio", 0),
         },
@@ -434,6 +563,9 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "radar": f"/api/chart/radar_{gstin}.png",
             "turnover": f"/api/chart/turnover_{gstin}.png",
             "network": f"/api/chart/network_{gstin}.png",
+            "network_interactive": f"/static/network_int_{gstin}.html",
+            "fraud_ring": f"/api/chart/fraud_ring_{gstin}.png",
+            "fraud_ring_interactive": f"/static/fraud_ring_{gstin}.html",
         },
         "pdf_url": f"/api/report/{gstin}/pdf",
         "amnesty_status": _build_amnesty_status(target),

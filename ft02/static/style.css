@@ -647,33 +647,88 @@ body::before {
     grid-column: 1 / -1;
 }
 
-/* ═══ RISK FACTORS ═══ */
-.explanation-item {
-    padding: 8px 14px;
-    font-size: 0.88rem;
+/* ═══ RISK FACTORS (NEW CARDS) ═══ */
+.explanation-card {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.explanation-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(4px);
+}
+
+.card-indicator {
+    width: 4px;
+    flex-shrink: 0;
+}
+
+.card-content {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 12px;
     color: var(--text-secondary);
-    line-height: 1.5;
+    font-size: 0.92rem;
+    flex: 1;
 }
 
-.explanation-item.header {
-    font-weight: 600;
+.icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+}
+
+.exp-counter {
+    font-weight: 700;
+    font-size: 0.9rem;
     color: var(--text-primary);
-    font-size: 0.95rem;
-    padding-top: 14px;
 }
 
-.explanation-item.positive {
+.exp-text {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.explanation-card.positive .card-indicator {
+    background: var(--accent-green);
+}
+.explanation-card.positive .icon-wrap svg {
     color: var(--accent-green);
 }
 
-.explanation-item.negative {
-    color: var(--accent-orange);
+.explanation-card.negative .card-indicator {
+    background: var(--accent-red);
+}
+.explanation-card.negative .icon-wrap svg {
+    color: var(--accent-red);
 }
 
-.explanation-item.separator {
-    border-bottom: 1px solid var(--border);
-    margin: 8px 0;
-    padding: 0;
+.explanation-card.neutral .card-indicator {
+    background: var(--accent-purple);
+}
+.explanation-card.neutral .icon-wrap svg {
+    color: var(--accent-purple);
+}
+
+.explanation-card.highlight-loan {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    margin-bottom: 24px;
+}
+.explanation-card.highlight-loan .card-content {
+    color: var(--text-primary);
+    font-size: 0.95rem;
 }
 
 /* ═══ FRAUD INDICATORS ═══ */
@@ -706,6 +761,104 @@ body::before {
 .fi-desc {
     font-size: 0.88rem;
     color: var(--text-secondary);
+}
+
+/* ═══ FRAUD RING TOPOLOGY ═══ */
+.fraud-ring-section {
+    border-left: 3px solid #EF4444;
+    background: linear-gradient(135deg, rgba(239,68,68,0.03) 0%, var(--bg-card) 100%);
+}
+
+.fraud-ring-section .section-header h2 svg {
+    color: #EF4444;
+}
+
+.fraud-ring-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.fr-stat-card {
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.fr-stat-card:hover {
+    transform: translateY(-2px);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.fr-stat-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+}
+
+.fr-stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.fraud-chain-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.1);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.fraud-chain-row:hover {
+    background: rgba(239, 68, 68, 0.1);
+    transform: translateX(4px);
+}
+
+.chain-number {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #EF4444;
+    background: rgba(239, 68, 68, 0.15);
+    padding: 4px 10px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.chain-path {
+    flex: 1;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.chain-funds {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #FCA5A5;
+    background: rgba(239, 68, 68, 0.12);
+    padding: 4px 12px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .fraud-ring-stats { grid-template-columns: 1fr; }
+    .fraud-chain-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .chain-funds { align-self: flex-end; }
 }
 
 /* ═══ FOOTER ═══ */

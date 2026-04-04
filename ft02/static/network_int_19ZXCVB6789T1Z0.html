@@ -1,0 +1,127 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #1a2235;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#3b82f6", "font": {"color": "white"}, "id": "19ZXCVB6789T1Z0", "label": "TARGET", "shape": "dot", "size": 30, "title": "TARGET: 19ZXCVB6789T1Z0"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_000", "label": "C_19ZXCVB6_000", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_000"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_001", "label": "C_19ZXCVB6_001", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_001"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_002", "label": "C_19ZXCVB6_002", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_002"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_003", "label": "C_19ZXCVB6_003", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_003"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_004", "label": "C_19ZXCVB6_004", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_004"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_005", "label": "C_19ZXCVB6_005", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_005"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_006", "label": "C_19ZXCVB6_006", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_006"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_007", "label": "C_19ZXCVB6_007", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_007"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_19ZXCVB6_008", "label": "C_19ZXCVB6_008", "shape": "dot", "size": 15, "title": "Customer: C_19ZXCVB6_008"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_19ZXCVB6_000", "label": "V_19ZXCVB6_000", "shape": "dot", "size": 15, "title": "Vendor: V_19ZXCVB6_000"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_19ZXCVB6_001", "label": "V_19ZXCVB6_001", "shape": "dot", "size": 15, "title": "Vendor: V_19ZXCVB6_001"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_19ZXCVB6_002", "label": "V_19ZXCVB6_002", "shape": "dot", "size": 15, "title": "Vendor: V_19ZXCVB6_002"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 162136.66", "to": "C_19ZXCVB6_000", "weight": 162136.66, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 27170.83", "to": "C_19ZXCVB6_001", "weight": 27170.83, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 197.1", "to": "C_19ZXCVB6_002", "weight": 197.1, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 24966.34", "to": "C_19ZXCVB6_003", "weight": 24966.34, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 31640.19", "to": "C_19ZXCVB6_004", "weight": 31640.19, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 110431.47", "to": "C_19ZXCVB6_005", "weight": 110431.47, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 20616.92", "to": "C_19ZXCVB6_006", "weight": 20616.92, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 5490.51", "to": "C_19ZXCVB6_007", "weight": 5490.51, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "19ZXCVB6789T1Z0", "title": "Amount: Rs. 18424.55", "to": "C_19ZXCVB6_008", "weight": 18424.55, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_19ZXCVB6_000", "title": "Amount: Rs. 10300.57", "to": "19ZXCVB6789T1Z0", "weight": 10300.57, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_19ZXCVB6_001", "title": "Amount: Rs. 274713.31", "to": "19ZXCVB6789T1Z0", "weight": 274713.31, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_19ZXCVB6_002", "title": "Amount: Rs. 55120.76", "to": "19ZXCVB6789T1Z0", "weight": 55120.76, "width": 1.5}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {"nodes": {"borderWidth": 2, "borderWidthSelected": 4}, "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.5}}, "smooth": {"type": "continuous", "forceDirection": "none"}}, "physics": {"forceAtlas2Based": {"gravitationalConstant": -50, "centralGravity": 0.01, "springLength": 100, "springConstant": 0.08}, "minVelocity": 0.75, "solver": "forceAtlas2Based"}};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

@@ -146,3 +146,95 @@ def generate_fraud_network(business: dict, output_dir: str) -> str:
     plt.close(fig)
 
     return filepath
+
+def generate_fraud_network_html(business: dict, output_dir: str) -> str:
+    """
+    Generate an interactive PyVis HTML fraud network visualization for the dashboard.
+    """
+    from pyvis.network import Network
+    gstin = business["business_identity"]["gstin"]
+    network = business.get("network_data", {})
+    edges = network.get("edges", [])
+    circular = network.get("circular_trades", [])
+
+    if not edges:
+        return ""
+
+    G = nx.DiGraph()
+    G.add_node(gstin, type="target")
+
+    for edge in edges:
+        G.add_edge(edge["source"], edge["target"],
+                    weight=edge.get("weight", 1),
+                    edge_type=edge.get("type", "unknown"))
+
+    if G.number_of_nodes() > 80:
+        neighbors = set(G.predecessors(gstin)) | set(G.successors(gstin))
+        top_nodes = {gstin} | neighbors
+        G = G.subgraph(top_nodes).copy()
+
+    net = Network(height="600px", width="100%", directed=True, bgcolor="#1a2235", font_color="white")
+    
+    cycle_nodes = set()
+    cycle_edges = set()
+    for cycle in circular:
+        path = cycle.get("path", [])
+        cycle_nodes.update(path)
+        for i in range(len(path) - 1):
+            cycle_edges.add((path[i], path[i+1]))
+
+    for node in G.nodes():
+        if node == gstin:
+            net.add_node(node, label="TARGET", color="#3b82f6", size=30, title=f"TARGET: {node}")
+        elif node in cycle_nodes:
+            net.add_node(node, label=str(node)[:6], color="#ef4444", size=25, title=f"Risk Entity: {node}")
+        elif node.startswith("V_"):
+            net.add_node(node, label=str(node), color="#10b981", size=15, title=f"Vendor: {node}")
+        else:
+            net.add_node(node, label=str(node), color="#f59e0b", size=15, title=f"Customer: {node}")
+
+    for u, v, data in G.edges(data=True):
+        amt = data.get("weight", 0)
+        title = f"Amount: Rs. {amt}"
+        
+        if (u, v) in cycle_edges:
+            net.add_edge(u, v, title=title, weight=amt, color="#ef4444", width=3)
+        elif data.get("edge_type") == "supply":
+            net.add_edge(u, v, title=title, weight=amt, color="#10b981", width=1.5)
+        else:
+            net.add_edge(u, v, title=title, weight=amt, color="#f59e0b", width=1.5)
+
+    net.set_options("""
+    var options = {
+      "nodes": {
+        "borderWidth": 2,
+        "borderWidthSelected": 4
+      },
+      "edges": {
+        "arrows": {
+          "to": {
+            "enabled": true,
+            "scaleFactor": 0.5
+          }
+        },
+        "smooth": {
+          "type": "continuous",
+          "forceDirection": "none"
+        }
+      },
+      "physics": {
+        "forceAtlas2Based": {
+          "gravitationalConstant": -50,
+          "centralGravity": 0.01,
+          "springLength": 100,
+          "springConstant": 0.08
+        },
+        "minVelocity": 0.75,
+        "solver": "forceAtlas2Based"
+      }
+    }
+    """)
+    
+    filepath = os.path.join(output_dir, f"network_int_{gstin}.html")
+    net.write_html(filepath)
+    return filepath
