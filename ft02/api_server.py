@@ -101,6 +101,7 @@ class AnalyzeResponse(BaseModel):
     circular_trades_detail: list
     amnesty_status: dict
     elapsed_seconds: float
+    bankruptcy_probability: float
 
 
 # ── Startup: Pre-train models ──────────────────────────────────────────────────
@@ -548,6 +549,7 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "concentration_ratio": network.get("customer_concentration_ratio", 0),
             "dependency_single_customer": network.get("dependency_on_single_customer", 0),
             "circular_trades": len(network.get("circular_trades", [])),
+            "circular_trades_count": len(network.get("circular_trades", [])),
         },
         "circular_trades_detail": [
             {
@@ -560,23 +562,163 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
         "purchase_summary": {
             "purchase_to_sales_ratio": target.get("purchase_data", {}).get("purchase_to_sales_ratio", 0),
         },
-<<<<<<< HEAD
         "charts": interactive_charts,
-=======
-        "charts": {
-            "sales": f"/api/chart/sales_{gstin}.png",
-            "gauge": f"/api/chart/gauge_{gstin}.png",
-            "radar": f"/api/chart/radar_{gstin}.png",
-            "turnover": f"/api/chart/turnover_{gstin}.png",
-            "network": f"/api/chart/network_{gstin}.png",
-            "network_interactive": f"/static/network_int_{gstin}.html",
-            "fraud_ring": f"/api/chart/fraud_ring_{gstin}.png",
-            "fraud_ring_interactive": f"/static/fraud_ring_{gstin}.html",
-        },
->>>>>>> e5e9dc17e9032bdcb91cd93be0d8f0253a82f369
         "pdf_url": f"/api/report/{gstin}/pdf",
         "amnesty_status": _build_amnesty_status(target),
         "elapsed_seconds": 0,
+        "bankruptcy_probability": _compute_bankruptcy_probability(target),
+    }
+
+def _compute_bankruptcy_probability(target: dict) -> float:
+    """Derive bankruptcy probability from credit features deterministically."""
+    feats = target.get("_credit_features", {})
+    score = target.get("credit_score", 500)
+    fraud_prob = target.get("fraud_probability", 0.1)
+    defaults = target.get("loan_history", {}).get("loan_defaults", 0)
+    late = feats.get("late_filings_count", 0)
+    volatility = target.get("sales_data", {}).get("sales_volatility", 0.3)
+
+    # Higher score = lower bankruptcy risk
+    base = max(0, (700 - score) / 700)
+    bankruptcy_prob = (
+        base * 0.5
+        + fraud_prob * 0.25
+        + min(defaults / 5, 1) * 0.15
+        + min(late / 12, 1) * 0.05
+        + volatility * 0.05
+    )
+    return round(min(max(bankruptcy_prob, 0.01), 0.98), 4)
+
+
+# ── Trend Data Endpoint ─────────────────────────────────────────────────────────
+@app.get("/api/trend/{gstin}")
+async def get_risk_trend(gstin: str):
+    """Return 12-month synthetic risk trend data for a given GSTIN."""
+    import hashlib
+    import random
+    seed = int(hashlib.md5(gstin.encode()).hexdigest(), 16) % (2**32)
+    rng = random.Random(seed)
+
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    base_score = rng.randint(420, 750)
+    base_revenue = rng.randint(500000, 5000000)
+
+    risk_scores, revenues, gst_delays, loan_health = [], [], [], []
+    for i in range(12):
+        drift = rng.uniform(-0.08, 0.10)
+        base_score = max(300, min(900, int(base_score * (1 + drift))))
+        risk_scores.append(base_score)
+
+        rev_drift = rng.uniform(-0.12, 0.15)
+        base_revenue = max(100000, int(base_revenue * (1 + rev_drift)))
+        revenues.append(base_revenue)
+
+        gst_delays.append(rng.randint(0, 4))
+        loan_health.append(round(rng.uniform(0.5, 1.0), 2))
+
+    # Detect rapid escalation: if risk dropped more than 20% over the year
+    escalation = risk_scores[-1] < risk_scores[0] * 0.80
+    drop_pct = round((risk_scores[0] - risk_scores[-1]) / risk_scores[0] * 100, 1)
+
+    return {
+        "gstin": gstin,
+        "months": months,
+        "risk_scores": risk_scores,
+        "revenues": revenues,
+        "gst_delays": gst_delays,
+        "loan_health": loan_health,
+        "escalation_alert": escalation,
+        "escalation_message": (
+            f"\u26a0\ufe0f Rapid Risk Escalation Detected — score dropped {drop_pct}% over 12 months"
+            if escalation else None
+        ),
+    }
+
+
+# ── Stress Test Endpoint ────────────────────────────────────────────────────────
+class StressTestRequest(BaseModel):
+    gstin: str
+    revenue_drop_pct: float = Field(0, ge=0, le=100, description="Revenue drop percentage")
+    loan_increase_pct: float = Field(0, ge=0, le=200, description="Loan obligation increase %")
+    gst_delay_months: int = Field(0, ge=0, le=12, description="Additional GST delay months")
+    industry_risk_delta: float = Field(0, ge=-3, le=3, description="Industry risk score delta")
+
+@app.post("/api/stress-test")
+async def run_stress_test(request: StressTestRequest):
+    """Re-score business under stress scenario and return before/after comparison."""
+    if not _models["ready"]:
+        raise HTTPException(503, "Models are still training. Please wait.")
+
+    from credit_scoring.feature_builder import build_credit_features
+    from fraud_detection.fraud_features import build_fraud_features
+    from credit_scoring.scorer import score_business, classify_risk_band
+    from fraud_detection.fraud_model import predict_fraud
+
+    # Build baseline business
+    target = _build_target_business(AnalyzeRequest(gstin=request.gstin))
+    target["_credit_features"] = build_credit_features(target)
+    target["_fraud_features"] = build_fraud_features(target)
+    before_credit = score_business(target, _models["credit_models"])
+    before_fraud = predict_fraud(target, _models["fraud_models"])
+    before_score = before_credit["credit_score"]
+    before_fraud_p = round(before_fraud["fraud_probability"], 4)
+    before_bankruptcy = _compute_bankruptcy_probability({**target, "credit_score": before_score, "fraud_probability": before_fraud_p})
+
+    # Apply stress modifications
+    import copy
+    stressed = copy.deepcopy(target)
+    sales = stressed.get("sales_data", {})
+    if request.revenue_drop_pct > 0:
+        factor = 1 - request.revenue_drop_pct / 100
+        sales["estimated_turnover"] = sales.get("estimated_turnover", 1000000) * factor
+        sales["monthly_sales"] = [s * factor for s in sales.get("monthly_sales", [])]
+        sales["sales_volatility"] = min(1, sales.get("sales_volatility", 0.3) + request.revenue_drop_pct / 200)
+    if request.gst_delay_months > 0:
+        gst = stressed.get("gst_behavior", {})
+        gst["late_filings_count"] = gst.get("late_filings_count", 0) + request.gst_delay_months
+        gst["months_not_filed"] = gst.get("months_not_filed", 0) + max(0, request.gst_delay_months - 3)
+    if request.loan_increase_pct > 0:
+        loans = stressed.get("loan_history", {})
+        loans["total_loan_amount"] = loans.get("total_loan_amount", 500000) * (1 + request.loan_increase_pct / 100)
+    if request.industry_risk_delta != 0:
+        identity = stressed.get("business_identity", {})
+        identity["risk_sector_score"] = max(1, min(10, identity.get("risk_sector_score", 5) + request.industry_risk_delta))
+
+    stressed["_credit_features"] = build_credit_features(stressed)
+    stressed["_fraud_features"] = build_fraud_features(stressed)
+    after_credit = score_business(stressed, _models["credit_models"])
+    after_fraud = predict_fraud(stressed, _models["fraud_models"])
+    after_score = after_credit["credit_score"]
+    after_fraud_p = round(after_fraud["fraud_probability"], 4)
+    after_bankruptcy = _compute_bankruptcy_probability({**stressed, "credit_score": after_score, "fraud_probability": after_fraud_p})
+
+    return {
+        "gstin": request.gstin,
+        "scenario": {
+            "revenue_drop_pct": request.revenue_drop_pct,
+            "loan_increase_pct": request.loan_increase_pct,
+            "gst_delay_months": request.gst_delay_months,
+            "industry_risk_delta": request.industry_risk_delta,
+        },
+        "before": {
+            "credit_score": before_score,
+            "risk_band": classify_risk_band(before_score),
+            "fraud_probability": before_fraud_p,
+            "bankruptcy_probability": before_bankruptcy,
+        },
+        "after": {
+            "credit_score": after_score,
+            "risk_band": classify_risk_band(after_score),
+            "fraud_probability": after_fraud_p,
+            "bankruptcy_probability": after_bankruptcy,
+        },
+        "delta": {
+            "credit_score": after_score - before_score,
+            "fraud_probability": round(after_fraud_p - before_fraud_p, 4),
+            "bankruptcy_probability": round(after_bankruptcy - before_bankruptcy, 4),
+        },
     }
 
 

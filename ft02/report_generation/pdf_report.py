@@ -416,8 +416,6 @@ def generate_pdf_report(business, charts_dir, output_dir):
     ]))
     elements.append(net_table)
 
-<<<<<<< HEAD
-=======
     # ── Fraud Ring Detail ──
     if circular_trades:
         elements.append(Spacer(1, 10))
@@ -485,7 +483,6 @@ def generate_pdf_report(business, charts_dir, output_dir):
         img.hAlign = 'CENTER'
         elements.append(img)
 
->>>>>>> e5e9dc17e9032bdcb91cd93be0d8f0253a82f369
     elements.append(PageBreak())
 
     # === SECTION 7: KEY RISK FACTORS ===

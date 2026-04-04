@@ -69,49 +69,61 @@
 <body class="bg-surface-container-low text-on-surface selection:bg-primary-container selection:text-on-primary-container">
 
 <!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-full w-64 border-r border-outline-variant bg-white flex flex-col py-6 z-50">
-    <div class="px-6 mb-10">
+<aside class="fixed left-0 top-0 h-full w-64 border-r border-outline-variant bg-white flex flex-col py-6 z-50 overflow-y-auto">
+    <div class="px-6 mb-8">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center">
-                <span class="material-symbols-outlined text-white text-sm">shield</span>
+            <div class="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-white text-base">shield</span>
             </div>
             <div>
                 <div class="text-xl font-extrabold text-primary tracking-tight">RiskEngine Pro</div>
-                <div class="text-[10px] uppercase tracking-widest text-outline font-bold">MSME Credit Analysis</div>
+                <div class="text-[9px] uppercase tracking-widest text-outline font-bold">MSME Credit Intelligence</div>
             </div>
         </div>
     </div>
-    <nav class="flex-1 space-y-1 px-3">
-
-        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('dashboard')">
-            <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-            <span class="text-sm font-medium Inter">Dashboard</span>
+    <nav class="flex-1 space-y-0.5 px-3" id="sidebar-nav">
+        <!-- Each nav-item is controlled by switchTab() -->
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="dashboard" onclick="switchTab('dashboard')">
+            <span class="material-symbols-outlined text-lg">dashboard</span>
+            <span class="text-[13px] font-semibold">Overview Dashboard</span>
         </a>
-        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="resetForm()">
-            <span class="material-symbols-outlined" data-icon="add_business">add_business</span>
-            <span class="text-sm font-medium Inter">Analyze Business</span>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="financials" onclick="switchTab('financials')">
+            <span class="material-symbols-outlined text-lg">analytics</span>
+            <span class="text-[13px] font-semibold">Financial Analysis</span>
         </a>
-        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('financials')">
-            <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-            <span class="text-sm font-medium Inter">Financial Analysis</span>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="trend" onclick="switchTab('trend')">
+            <span class="material-symbols-outlined text-lg">trending_up</span>
+            <span class="text-[13px] font-semibold">Risk Trend Monitor</span>
         </a>
-        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('network')">
-            <span class="material-symbols-outlined" data-icon="hub">hub</span>
-            <span class="text-sm font-medium Inter">Vendor Network</span>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="network" onclick="switchTab('network')">
+            <span class="material-symbols-outlined text-lg">hub</span>
+            <span class="text-[13px] font-semibold">Fraud Network</span>
         </a>
-        <a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 rounded cursor-pointer" onclick="switchTab('risk')">
-            <span class="material-symbols-outlined" data-icon="security">security</span>
-            <span class="text-sm font-medium Inter">Risk Analysis</span>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="risk" onclick="switchTab('risk')">
+            <span class="material-symbols-outlined text-lg">security</span>
+            <span class="text-[13px] font-semibold">Risk Analysis</span>
         </a>
-        <a class="flex items-center gap-3 px-3 py-2 text-primary font-bold border-r-4 border-primary bg-primary-container/20 transition-colors duration-200 cursor-pointer" onclick="switchTab('all')">
-            <span class="material-symbols-outlined" data-icon="description">description</span>
-            <span class="text-sm font-bold Inter">Credit Report (All)</span>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="ai-analyst" onclick="switchTab('ai-analyst')">
+            <span class="material-symbols-outlined text-lg">smart_toy</span>
+            <span class="text-[13px] font-semibold">AI Risk Analyst</span>
         </a>
-
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="decision" onclick="switchTab('decision')">
+            <span class="material-symbols-outlined text-lg">gavel</span>
+            <span class="text-[13px] font-semibold">Credit Decision</span>
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="stress" onclick="switchTab('stress')">
+            <span class="material-symbols-outlined text-lg">science</span>
+            <span class="text-[13px] font-semibold">Stress Testing</span>
+        </a>
+        <div class="my-2 h-px bg-outline-variant mx-1"></div>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-150 rounded-sm cursor-pointer" data-tab="all" onclick="switchTab('all')">
+            <span class="material-symbols-outlined text-lg">description</span>
+            <span class="text-[13px] font-semibold">Full Report</span>
+        </a>
     </nav>
-    <div class="mt-auto px-6 pt-6 border-t border-outline-variant">
-        <button id="btn-new-analysis-sidebar" onclick="resetForm()" class="w-full bg-primary text-white py-3 rounded font-bold text-sm tracking-tight active:scale-95 transition-all">
-            New Analysis
+    <div class="px-4 pt-4 border-t border-outline-variant mt-4">
+        <button id="btn-new-analysis-sidebar" onclick="resetForm()" class="w-full bg-primary text-white py-3 rounded-sm font-bold text-sm tracking-tight active:scale-95 transition-all hover:bg-[#005a40] flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-base">add_circle</span> New Analysis
         </button>
     </div>
 </aside>
@@ -278,10 +290,11 @@
                         </div>
                     </div>
 
-                    <!-- Section 1: Core Metrics -->
-                    <section id="view-dashboard" class="grid grid-cols-3 gap-8 report-section">
+                    <!-- Section 1: Core Metrics (4-column grid with bankruptcy) -->
+                    <!-- Section 1: Core Metrics (4-col overview) -->
+                    <section id="view-dashboard" class="grid grid-cols-4 gap-5 report-section">
                         <div class="p-6 border border-outline-variant bg-surface-bright" id="card-score">
-                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-6">Risk Pulse Score</div>
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-4">Risk Pulse Score</div>
                             <div class="flex items-baseline gap-2">
                                 <span class="text-5xl font-extrabold text-on-surface" id="val-score">-</span>
                                 <span class="text-primary text-sm font-bold flex items-center" id="val-risk-band">-</span>
@@ -293,29 +306,26 @@
                         </div>
 
                         <div class="p-6 border border-outline-variant bg-surface-bright" id="card-fraud">
-                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-6">Fraud Analysis</div>
-                            <div class="flex items-center gap-3 mb-4">
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-4">Fraud Analysis</div>
+                            <div class="flex items-center gap-3 mb-3">
                                 <span id="val-fraud-level" class="px-3 py-1 bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Loading...</span>
                             </div>
-                            <p class="text-xs text-on-surface-variant leading-relaxed font-bold">Calculated Probability: <span id="val-fraud"></span></p>
-                            
-                            <!-- Detailed fraud indicators optionally inject here -->
-                            <div id="fraud-indicators-list" class="mt-2 text-[10px] text-error font-medium"></div>
+                            <p class="text-xs text-on-surface-variant font-bold">Probability: <span id="val-fraud"></span></p>
+                            <div id="fraud-indicators-list" class="mt-2 text-[10px] text-error font-medium space-y-1"></div>
+                        </div>
+
+                        <div class="p-6 border border-outline-variant bg-surface-bright" id="card-bankruptcy">
+                            <!-- Filled dynamically by renderBankruptcyCard() -->
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-4">Bankruptcy Risk</div>
+                            <div class="text-2xl font-extrabold text-outline">—</div>
+                            <div class="text-[11px] text-outline italic mt-2">Awaiting analysis</div>
                         </div>
 
                         <div class="p-6 border border-outline-variant bg-surface-bright" id="card-decision">
-                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-6">Underwriting Recommendation</div>
-                            <div id="val-decision" class="text-lg font-extrabold text-primary mb-4 uppercase">Loading...</div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <div class="text-[9px] text-outline font-bold uppercase">Rec. Exposure Limit</div>
-                                    <div id="val-loan-amt" class="text-sm font-bold text-on-surface">Rs. -</div>
-                                </div>
-                                <!-- Mock base rate just to keep mockup faithful -->
-                                <div>
-                                    <div class="text-[9px] text-outline font-bold uppercase">Base Rate</div>
-                                    <div class="text-sm font-bold text-on-surface">9.25% p.a.</div>
-                                </div>
+                            <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-4">Underwriting Recommendation</div>
+                            <div id="val-decision" class="text-lg font-extrabold text-primary mb-3 uppercase">Loading...</div>
+                            <div class="grid grid-cols-1 gap-2 text-[11px]">
+                                <div><div class="text-[9px] text-outline font-bold uppercase">Rec. Exposure Limit</div><div id="val-loan-amt" class="font-bold text-on-surface">Rs. -</div></div>
                             </div>
                         </div>
                     </section>
@@ -392,7 +402,66 @@
                            <div id="decision-reasons" class="space-y-2 text-xs font-medium bg-surface-bright p-4 border border-outline-variant"></div>
                         </div>
                     </section>
-                </div>
+
+                    <!-- Section 5: Risk Trend Monitor -->
+                    <section id="view-trend" class="space-y-6 report-section">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">12-Month Risk Trend</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                        </div>
+                        <div id="trend-escalation-alert" style="display:none;" class="bg-error-container border border-error text-error p-4 rounded-sm font-bold flex items-center gap-3 text-sm">
+                            <span class="material-symbols-outlined">warning</span>
+                            <span id="trend-escalation-text"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div class="border border-outline-variant bg-white p-4"><div class="text-[10px] font-black uppercase text-outline mb-2 tracking-widest">Credit Score Over Time</div><div id="chart-trend-score" style="height:240px;"></div></div>
+                            <div class="border border-outline-variant bg-white p-4"><div class="text-[10px] font-black uppercase text-outline mb-2 tracking-widest">Revenue Trend</div><div id="chart-trend-revenue" style="height:240px;"></div></div>
+                            <div class="border border-outline-variant bg-white p-4"><div class="text-[10px] font-black uppercase text-outline mb-2 tracking-widest">GST Filing Delays (months)</div><div id="chart-trend-gst" style="height:240px;"></div></div>
+                            <div class="border border-outline-variant bg-white p-4"><div class="text-[10px] font-black uppercase text-outline mb-2 tracking-widest">Loan Repayment Health</div><div id="chart-trend-loan" style="height:240px;"></div></div>
+                        </div>
+                    </section>
+
+                    <!-- Section 6: AI Risk Analyst -->
+                    <section id="view-ai-analyst" class="space-y-6 report-section">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">AI Risk Analyst</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                            <span class="text-[10px] px-3 py-1 bg-primary text-white font-bold tracking-widest uppercase rounded-sm">AI Generated</span>
+                        </div>
+                        <div id="ai-analyst-report" class="space-y-5"></div>
+                    </section>
+
+                    <!-- Section 7: Credit Decision Engine -->
+                    <section id="view-decision" class="space-y-6 report-section">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">Credit Decision Engine</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                        </div>
+                        <div id="decision-engine-panel"></div>
+                    </section>
+
+                    <!-- Section 8: Stress Testing Simulation -->
+                    <section id="view-stress" class="space-y-6 report-section">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-on-surface">Stress Testing Simulation</h2>
+                            <div class="flex-1 h-px bg-outline-variant"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="border border-outline-variant bg-white p-6 space-y-5">
+                                <h3 class="font-extrabold text-sm">Scenario Parameters</h3>
+                                <div><label class="text-[10px] font-black uppercase text-outline tracking-widest">Revenue Drop</label><input type="range" id="stress-revenue" min="0" max="80" value="0" class="w-full mt-2 accent-primary" oninput="document.getElementById('stress-revenue-val').textContent=this.value+'%'"><div class="flex justify-between text-[10px] text-outline mt-1"><span>0%</span><span id="stress-revenue-val" class="font-bold text-error">0%</span><span>80%</span></div></div>
+                                <div><label class="text-[10px] font-black uppercase text-outline tracking-widest">Loan Obligation Increase</label><input type="range" id="stress-loan" min="0" max="150" value="0" class="w-full mt-2 accent-primary" oninput="document.getElementById('stress-loan-val').textContent=this.value+'%'"><div class="flex justify-between text-[10px] text-outline mt-1"><span>0%</span><span id="stress-loan-val" class="font-bold text-error">0%</span><span>150%</span></div></div>
+                                <div><label class="text-[10px] font-black uppercase text-outline tracking-widest">GST Filing Delays (Months)</label><input type="range" id="stress-gst" min="0" max="12" value="0" class="w-full mt-2 accent-primary" oninput="document.getElementById('stress-gst-val').textContent=this.value"><div class="flex justify-between text-[10px] text-outline mt-1"><span>0</span><span id="stress-gst-val" class="font-bold text-error">0</span><span>12</span></div></div>
+                                <div><label class="text-[10px] font-black uppercase text-outline tracking-widest">Industry Risk Delta</label><input type="range" id="stress-industry" min="-3" max="3" value="0" step="0.5" class="w-full mt-2 accent-primary" oninput="document.getElementById('stress-industry-val').textContent=this.value"><div class="flex justify-between text-[10px] text-outline mt-1"><span>-3</span><span id="stress-industry-val" class="font-bold text-error">0</span><span>+3</span></div></div>
+                                <button onclick="runStressTest()" class="w-full bg-primary text-white py-3 rounded-sm font-bold text-sm tracking-tight active:scale-95 hover:bg-[#005a40] transition-all flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-base">science</span> Run Simulation
+                                </button>
+                            </div>
+                            <div id="stress-results" class="border border-outline-variant bg-surface-bright p-8 flex items-center justify-center text-sm text-on-surface-variant italic text-center">
+                                Adjust parameters and run simulation to see before/after comparison.
+                            </div>
+                        </div>
+                    </section>
 
                 <!-- Footer -->
                 <div class="px-16 py-8 border-t border-outline-variant bg-surface-container flex justify-between items-center">

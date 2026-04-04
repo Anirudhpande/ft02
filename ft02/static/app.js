@@ -265,25 +265,32 @@ function renderResults(data) {
         document.getElementById('score-fill').style.width = scorePct + '%';
     }, 100);
 
-    // Score card color
-    const cardScore = document.getElementById('card-score');
-    if (data.credit_score >= 700) {
-        cardScore.querySelector('.card-value').style.color = 'var(--accent-green)';
-    } else if (data.credit_score < 500) {
-        cardScore.querySelector('.card-value').style.color = 'var(--accent-red)';
+    // Score card color — use the score fill bar color instead of a missing .card-value
+    const scoreEl = document.getElementById('val-score');
+    if (scoreEl) {
+        if (data.credit_score >= 700) scoreEl.style.color = 'var(--accent-green, #16a34a)';
+        else if (data.credit_score < 500) scoreEl.style.color = 'var(--accent-red, #dc2626)';
     }
 
     // Fraud
     document.getElementById('val-fraud').textContent = (data.fraud_probability * 100).toFixed(1) + '%';
-    document.getElementById('val-fraud-level').textContent = data.fraud_risk_level + ' RISK';
-    const cardFraud = document.getElementById('card-fraud');
-    cardFraud.className = 'summary-card card-fraud ' + data.fraud_risk_level.toLowerCase();
+    const valFraudLevel = document.getElementById('val-fraud-level');
+    if (valFraudLevel) {
+        valFraudLevel.textContent = data.fraud_risk_level + ' RISK';
+        // Tint the badge without wiping Tailwind classes
+        const riskColors = { high: '#b91c1c', medium: '#d97706', low: '#15803d' };
+        valFraudLevel.style.background = riskColors[data.fraud_risk_level.toLowerCase()] || '#006d4e';
+    }
 
     // Decision
     document.getElementById('val-decision').textContent = data.decision;
     document.getElementById('val-loan-amt').textContent = 'Rs. ' + data.recommended_loan_amount.toLocaleString('en-IN');
-    const cardDec = document.getElementById('card-decision');
-    cardDec.className = 'summary-card card-decision ' + data.decision.toLowerCase();
+    // Tint decision text without overwriting Tailwind classes
+    const valDecEl = document.getElementById('val-decision');
+    if (valDecEl) {
+        const decColors = { APPROVE: '#15803d', REJECT: '#b91c1c', REVIEW: '#d97706' };
+        valDecEl.style.color = decColors[data.decision] || '';
+    }
 
     // Time
     document.getElementById('val-time').textContent = 'Processed in ' + data.elapsed_seconds.toFixed(1) + 's';
@@ -404,24 +411,27 @@ function renderResults(data) {
     
     explDiv.innerHTML = riskHtml + mitHtml;
 
-    // Fraud indicators
-    const fiSection = document.getElementById('fraud-indicators-section');
+    // Fraud indicators — inject into card-fraud widget
     const fiList = document.getElementById('fraud-indicators-list');
-    fiList.innerHTML = '';
-    if (data.fraud_indicators && data.fraud_indicators.length > 0) {
-        fiSection.style.display = 'block';
-        data.fraud_indicators.forEach(ind => {
-            const div = document.createElement('div');
-            div.className = 'fraud-indicator';
-            div.innerHTML = `
-                <span class="fi-severity ${ind.severity}">${ind.severity}</span>
-                <span class="fi-desc">${ind.description}</span>
-            `;
-            fiList.appendChild(div);
-        });
-    } else {
-        fiSection.style.display = 'none';
+    if (fiList) {
+        fiList.innerHTML = '';
+        if (data.fraud_indicators && data.fraud_indicators.length > 0) {
+            const sevColor = { critical: '#b91c1c', high: '#ea580c', medium: '#d97706', low: '#15803d' };
+            data.fraud_indicators.forEach(ind => {
+                const div = document.createElement('div');
+                div.className = 'flex gap-1 items-start mt-1';
+                div.innerHTML = `<span style="color:${sevColor[ind.severity]||'#333'};font-weight:700;font-size:10px;text-transform:uppercase;">${ind.severity}</span>
+                    <span style="font-size:10px;">${ind.description}</span>`;
+                fiList.appendChild(div);
+            });
+        }
     }
+
+    // Load trend data + render new panels
+    loadTrendData(data.gstin);
+    renderAIAnalyst(data);
+    renderDecisionEngine(data);
+    if(data.bankruptcy_probability !== undefined) renderBankruptcyCard(data.bankruptcy_probability);
 
     // Smooth scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -453,12 +463,20 @@ function switchTab(tabId) {
         const target = document.getElementById('view-' + tabId);
         if(target) target.style.display = 'block';
     }
+
+    // Highlight active nav item
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.classList.remove('text-primary', 'bg-primary/10', 'font-bold', 'border-r-2', 'border-primary');
+        el.classList.add('text-on-surface-variant');
+    });
+    const activeLink = document.querySelector(`.nav-item[data-tab='${tabId}']`);
+    if(activeLink) {
+        activeLink.classList.remove('text-on-surface-variant');
+        activeLink.classList.add('text-primary', 'bg-primary/10', 'font-bold', 'border-r-2', 'border-primary');
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    // Trigger window resize to force Plotly charts to adapt to container constraints
-    setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-    }, 50);
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 }
 
 // ── Toast Notifications ────────────────────────────────────────────────────────
@@ -477,4 +495,223 @@ function showToast(message, type = 'error') {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 3500);
+}
+
+// ── Bankruptcy Card ──────────────────────────────────────────────────────────────────────
+function renderBankruptcyCard(prob) {
+    const pct = (prob * 100).toFixed(1);
+    const color = prob >= 0.6 ? '#b91c1c' : prob >= 0.35 ? '#d97706' : '#15803d';
+    const label = prob >= 0.6 ? 'HIGH' : prob >= 0.35 ? 'MODERATE' : 'LOW';
+    const el = document.getElementById('card-bankruptcy');
+    if(!el) return;
+    el.innerHTML = `
+        <div class="text-[10px] text-outline font-black uppercase tracking-widest mb-4">Bankruptcy Risk</div>
+        <div class="text-4xl font-extrabold mb-1" style="color:${color}">${pct}%</div>
+        <div class="text-xs font-bold mb-3" style="color:${color}">${label} RISK</div>
+        <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-700" style="width:${pct}%;background:${color}"></div>
+        </div>
+        <div class="mt-2 text-[10px] text-outline italic">Derived from credit + fraud signals</div>`;
+}
+
+// ── Trend Charts ──────────────────────────────────────────────────────────────────────
+async function loadTrendData(gstin) {
+    try {
+        const res = await fetch(`/api/trend/${gstin}`);
+        const d = await res.json();
+
+        // Escalation alert
+        const alertEl = document.getElementById('trend-escalation-alert');
+        const alertTxt = document.getElementById('trend-escalation-text');
+        if(d.escalation_alert && alertEl) {
+            alertEl.style.display = 'flex';
+            alertTxt.textContent = d.escalation_message;
+        } else if(alertEl) { alertEl.style.display = 'none'; }
+
+        const layout = (title) => ({
+            margin: {t:10,b:30,l:40,r:10},
+            paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+            font:{size:10}, xaxis:{showgrid:false}, yaxis:{showgrid:true,gridcolor:'#e5e7eb'}
+        });
+        const cfg = {responsive:true, displayModeBar:false};
+
+        Plotly.newPlot('chart-trend-score', [{
+            x: d.months, y: d.risk_scores, type:'scatter', mode:'lines+markers',
+            line:{color:'#006d4e',width:2}, marker:{size:5}, fill:'tozeroy', fillcolor:'rgba(0,109,78,0.07)'
+        }], layout(), cfg);
+
+        Plotly.newPlot('chart-trend-revenue', [{
+            x: d.months, y: d.revenues, type:'bar',
+            marker:{color:'#1565C0', opacity:0.8}
+        }], layout(), cfg);
+
+        Plotly.newPlot('chart-trend-gst', [{
+            x: d.months, y: d.gst_delays, type:'bar',
+            marker:{color: d.gst_delays.map(v => v >= 3 ? '#b91c1c' : v >= 1 ? '#d97706' : '#15803d')}
+        }], layout(), cfg);
+
+        Plotly.newPlot('chart-trend-loan', [{
+            x: d.months, y: d.loan_health, type:'scatter', mode:'lines+markers',
+            line:{color:'#7c3aed',width:2}, fill:'tozeroy', fillcolor:'rgba(124,58,237,0.07)'
+        }], layout(), cfg);
+    } catch(e) { console.error('Trend load failed', e); }
+}
+
+// ── AI Risk Analyst ─────────────────────────────────────────────────────────────────────
+function renderAIAnalyst(data) {
+    const container = document.getElementById('ai-analyst-report');
+    if(!container) return;
+
+    const score = data.credit_score;
+    const band = data.risk_band;
+    const fraud = (data.fraud_probability * 100).toFixed(1);
+    const bankrupt = data.bankruptcy_probability ? (data.bankruptcy_probability * 100).toFixed(1) : 'N/A';
+    const decision = data.decision;
+    const loanAmt = data.recommended_loan_amount?.toLocaleString('en-IN');
+
+    // Parse SHAP into sentences
+    const risks = [], strengths = [];
+    (data.explanations || []).forEach(e => {
+        const t = e.trim();
+        if(t.startsWith('[!]') || t.startsWith('  [!]')) risks.push(t.replace(/^\s*\[!\]\s*/, ''));
+        else if(t.startsWith('+') || t.startsWith('  +')) strengths.push(t.replace(/^\s*\+\s*/, ''));
+    });
+
+    const fraudSignals = (data.fraud_indicators || []).map(f => f.description).join('; ') || 'No indicators detected.';
+
+    const decisionMap = {
+        APPROVE: {color:'#15803d', label:'APPROVE', note:'The business meets lending criteria and presents acceptable risk.'},
+        'APPROVE WITH CONDITIONS': {color:'#d97706', label:'APPROVE WITH CONDITIONS', note:'Approval is recommended but subject to additional covenant requirements.'},
+        'REQUIRE COLLATERAL': {color:'#ea580c', label:'REQUIRE COLLATERAL', note:'Elevated risk warrants collateral-backed lending to mitigate potential defaults.'},
+        REJECT: {color:'#b91c1c', label:'REJECT', note:'Risk profile exceeds acceptable thresholds for unsecured lending.'},
+    };
+    const dec = decisionMap[decision] || {color:'#64748b', label:decision, note:''};
+
+    const section = (icon, title, body, border='#006d4e') =>
+        `<div class="p-6 border border-outline-variant bg-surface-bright rounded-sm border-l-4" style="border-left-color:${border}">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-base" style="color:${border}">${icon}</span>
+                <h3 class="font-extrabold text-sm tracking-tight" style="color:${border}">${title}</h3>
+            </div>
+            <p class="text-[13px] text-on-surface-variant leading-relaxed font-medium">${body}</p>
+         </div>`;
+
+    container.innerHTML = [
+        section('summarize', 'Executive Summary',
+            `This AI-generated financial dossier synthesizes the credit risk profile of <b>${data.business_name}</b> (GSTIN: ${data.gstin}), a ${data.business_age}-year-old entity in the ${data.sector} sector. The business has been assigned a credit score of <b>${score}/900</b> (${band}), indicating a ${band.toLowerCase()} creditworthiness profile. The system's underwriting recommendation is: <b style="color:${dec.color}">${dec.label}</b>, with a recommended exposure limit of Rs. ${loanAmt}.`),
+        section('warning', 'Key Risk Drivers',
+            risks.length > 0
+                ? `The risk evaluation model identified the following primary stress signals: ${risks.join('. ')}. These factors were weighted by the neural SHAP layer to determine their contribution to the final credit score degradation.`
+                : 'No significant risk drivers were identified by the model at this time.',
+            '#b91c1c'),
+        section('verified', 'Mitigating Strengths',
+            strengths.length > 0
+                ? `Counterbalancing the risk drivers, several entity strengths were recognized: ${strengths.join('. ')}. These positive indicators partially offset the downside risk and support the lending recommendation.`
+                : 'No specific mitigating strengths were flagged by the model.',
+            '#15803d'),
+        section('gpp_maybe', 'Fraud Risk Assessment',
+            `The fraud detection module assigns a probability of <b>${fraud}%</b>. Detected anomaly signals include: <i>${fraudSignals}</i>. A bankruptcy risk estimate of <b>${bankrupt}%</b> has been computed from the combined credit and fraud signal vector.`,
+            fraud > 50 ? '#b91c1c' : '#d97706'),
+        section('gavel', 'Underwriting Recommendation',
+            `The Credit Decision Engine outputs: <b style="color:${dec.color}">${dec.label}</b>. ${dec.note} The recommended loan limit is Rs. ${loanAmt} with a suggested interest rate of ${suggestRate(score)}% per annum. Decision confidence: ${(data.decision_confidence * 100).toFixed(0)}%.`,
+            dec.color),
+    ].join('');
+}
+
+function suggestRate(score) {
+    if(score >= 750) return'8.5';
+    if(score >= 650) return '10.5';
+    if(score >= 550) return '13.0';
+    if(score >= 450) return '16.0';
+    return '19.5';
+}
+
+// ── Credit Decision Engine Panel ───────────────────────────────────────────────────────
+function renderDecisionEngine(data) {
+    const container = document.getElementById('decision-engine-panel');
+    if(!container) return;
+
+    const decision = data.decision;
+    const rate = suggestRate(data.credit_score);
+    const decColors = { APPROVE:'#15803d', 'APPROVE WITH CONDITIONS':'#d97706', 'REQUIRE COLLATERAL':'#ea580c', REJECT:'#b91c1c' };
+    const color = decColors[decision] || '#64748b';
+    const confidence = (data.decision_confidence * 100).toFixed(1);
+    const loan = data.recommended_loan_amount?.toLocaleString('en-IN');
+
+    const reasonsHtml = (data.decision_reasons || []).map(r => {
+        const isPos = r.toLowerCase().includes('strong') || r.toLowerCase().includes('low fraud') || r.toLowerCase().includes('stable');
+        const ic = isPos ? 'check_circle' : 'cancel';
+        const cl = isPos ? '#15803d' : '#b91c1c';
+        return `<div class="flex items-start gap-3 p-3 border border-outline-variant rounded-sm bg-white">
+            <span class="material-symbols-outlined text-sm mt-0.5" style="color:${cl}">${ic}</span>
+            <span class="text-[13px] font-medium text-on-surface">${r}</span></div>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="col-span-2 p-6 border-2 rounded-sm flex flex-col gap-2" style="border-color:${color};background:${color}10">
+                <div class="text-[10px] font-black uppercase tracking-widest" style="color:${color}">Decision</div>
+                <div class="text-2xl font-extrabold" style="color:${color}">${decision}</div>
+                <div class="text-[11px] font-bold text-outline">Confidence: ${confidence}%</div>
+            </div>
+            <div class="p-6 border border-outline-variant bg-white rounded-sm">
+                <div class="text-[10px] font-black uppercase tracking-widest text-outline mb-2">Recommended Limit</div>
+                <div class="text-xl font-extrabold text-on-surface">Rs. ${loan}</div>
+            </div>
+            <div class="p-6 border border-outline-variant bg-white rounded-sm">
+                <div class="text-[10px] font-black uppercase tracking-widest text-outline mb-2">Suggested Rate</div>
+                <div class="text-xl font-extrabold text-on-surface">${rate}% <span class="text-sm font-medium text-outline">p.a.</span></div>
+            </div>
+        </div>
+        <div class="space-y-2">
+            <div class="text-[10px] font-black uppercase tracking-widest text-outline mb-3">Decision Rationale</div>
+            ${reasonsHtml}
+        </div>`;
+}
+
+// ── Stress Test ──────────────────────────────────────────────────────────────────────
+async function runStressTest() {
+    if(!currentResult) { showToast('Run an analysis first', 'error'); return; }
+    const gstin = currentResult.gstin;
+    const body = {
+        gstin,
+        revenue_drop_pct: parseFloat(document.getElementById('stress-revenue').value),
+        loan_increase_pct: parseFloat(document.getElementById('stress-loan').value),
+        gst_delay_months: parseInt(document.getElementById('stress-gst').value),
+        industry_risk_delta: parseFloat(document.getElementById('stress-industry').value),
+    };
+    const resultsEl = document.getElementById('stress-results');
+    resultsEl.innerHTML = '<div class="text-sm text-outline animate-pulse">Running simulation...</div>';
+    try {
+        const res = await fetch('/api/stress-test', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+        });
+        const d = await res.json();
+        const delta = d.delta;
+        const fmt = (v, isScore) => {
+            const sign = v > 0 ? '+' : '';
+            const color = isScore ? (v >= 0 ? '#15803d' : '#b91c1c') : (v <= 0 ? '#15803d' : '#b91c1c');
+            const suffix = isScore ? '' : '%';
+            const val = isScore ? v : (v*100).toFixed(1);
+            return `<span style="color:${color};font-weight:700">${sign}${val}${suffix}</span>`;
+        };
+        resultsEl.innerHTML = `
+            <div class="w-full space-y-4">
+                <h3 class="font-extrabold text-sm mb-4">Before vs After Stress Scenario</h3>
+                ${[['Credit Score',d.before.credit_score,d.after.credit_score,delta.credit_score,true],
+                   ['Fraud Probability',(d.before.fraud_probability*100).toFixed(1)+'%',(d.after.fraud_probability*100).toFixed(1)+'%',delta.fraud_probability,false],
+                   ['Bankruptcy Risk',(d.before.bankruptcy_probability*100).toFixed(1)+'%',(d.after.bankruptcy_probability*100).toFixed(1)+'%',delta.bankruptcy_probability,false]
+                  ].map(([label,b,a,dv,isScore]) => `
+                    <div class="flex items-center gap-4 p-4 border border-outline-variant bg-white rounded-sm">
+                        <div class="w-1/3 text-[11px] font-black uppercase tracking-widest text-outline">${label}</div>
+                        <div class="flex-1 flex items-center gap-3 text-sm font-bold">
+                            <span class="text-on-surface">${b}</span>
+                            <span class="material-symbols-outlined text-sm text-outline">arrow_forward</span>
+                            <span class="text-on-surface">${a}</span>
+                        </div>
+                        <div class="text-sm">${fmt(dv, isScore)}</div>
+                    </div>`).join('')}
+                <div class="text-[10px] text-outline mt-2 italic">Risk band after stress: <b>${d.after.risk_band}</b></div>
+            </div>`;
+    } catch(e) { resultsEl.innerHTML = `<div class="text-error text-sm">Simulation failed: ${e.message}</div>`; }
 }

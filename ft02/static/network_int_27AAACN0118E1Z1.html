@@ -1,0 +1,127 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #1a2235;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#3b82f6", "font": {"color": "white"}, "id": "27AAACN0118E1Z1", "label": "TARGET", "shape": "dot", "size": 30, "title": "TARGET: 27AAACN0118E1Z1"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_000", "label": "C_27AAACN0_000", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_000"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_001", "label": "C_27AAACN0_001", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_001"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_002", "label": "C_27AAACN0_002", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_002"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_003", "label": "C_27AAACN0_003", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_003"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_004", "label": "C_27AAACN0_004", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_004"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_005", "label": "C_27AAACN0_005", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_005"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_006", "label": "C_27AAACN0_006", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_006"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_007", "label": "C_27AAACN0_007", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_007"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_008", "label": "C_27AAACN0_008", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_008"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_009", "label": "C_27AAACN0_009", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_009"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_010", "label": "C_27AAACN0_010", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_010"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_011", "label": "C_27AAACN0_011", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_011"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_012", "label": "C_27AAACN0_012", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_012"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_013", "label": "C_27AAACN0_013", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_013"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_014", "label": "C_27AAACN0_014", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_014"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_015", "label": "C_27AAACN0_015", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_015"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_016", "label": "C_27AAACN0_016", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_016"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_017", "label": "C_27AAACN0_017", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_017"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_018", "label": "C_27AAACN0_018", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_018"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_019", "label": "C_27AAACN0_019", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_019"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_020", "label": "C_27AAACN0_020", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_020"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_021", "label": "C_27AAACN0_021", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_021"}, {"color": "#f59e0b", "font": {"color": "white"}, "id": "C_27AAACN0_022", "label": "C_27AAACN0_022", "shape": "dot", "size": 15, "title": "Customer: C_27AAACN0_022"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_000", "label": "V_27AAACN0_000", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_000"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_001", "label": "V_27AAACN0_001", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_001"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_002", "label": "V_27AAACN0_002", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_002"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_003", "label": "V_27AAACN0_003", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_003"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_004", "label": "V_27AAACN0_004", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_004"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_005", "label": "V_27AAACN0_005", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_005"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_006", "label": "V_27AAACN0_006", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_006"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_007", "label": "V_27AAACN0_007", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_007"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_008", "label": "V_27AAACN0_008", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_008"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_009", "label": "V_27AAACN0_009", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_009"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_010", "label": "V_27AAACN0_010", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_010"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_011", "label": "V_27AAACN0_011", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_011"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_012", "label": "V_27AAACN0_012", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_012"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_013", "label": "V_27AAACN0_013", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_013"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_014", "label": "V_27AAACN0_014", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_014"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_015", "label": "V_27AAACN0_015", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_015"}, {"color": "#10b981", "font": {"color": "white"}, "id": "V_27AAACN0_016", "label": "V_27AAACN0_016", "shape": "dot", "size": 15, "title": "Vendor: V_27AAACN0_016"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 715.51", "to": "C_27AAACN0_000", "weight": 715.51, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 10726.68", "to": "C_27AAACN0_001", "weight": 10726.68, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 1000777.22", "to": "C_27AAACN0_002", "weight": 1000777.22, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 23058.58", "to": "C_27AAACN0_003", "weight": 23058.58, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 2717.98", "to": "C_27AAACN0_004", "weight": 2717.98, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 96730.8", "to": "C_27AAACN0_005", "weight": 96730.8, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 438657.23", "to": "C_27AAACN0_006", "weight": 438657.23, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 6976.89", "to": "C_27AAACN0_007", "weight": 6976.89, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 49907.67", "to": "C_27AAACN0_008", "weight": 49907.67, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 29206.99", "to": "C_27AAACN0_009", "weight": 29206.99, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 61702.37", "to": "C_27AAACN0_010", "weight": 61702.37, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 9641.93", "to": "C_27AAACN0_011", "weight": 9641.93, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 68291.17", "to": "C_27AAACN0_012", "weight": 68291.17, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 99632.38", "to": "C_27AAACN0_013", "weight": 99632.38, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 79677.21", "to": "C_27AAACN0_014", "weight": 79677.21, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 1187.72", "to": "C_27AAACN0_015", "weight": 1187.72, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 1667.44", "to": "C_27AAACN0_016", "weight": 1667.44, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 6370.17", "to": "C_27AAACN0_017", "weight": 6370.17, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 35649.03", "to": "C_27AAACN0_018", "weight": 35649.03, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 60268.16", "to": "C_27AAACN0_019", "weight": 60268.16, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 3303.19", "to": "C_27AAACN0_020", "weight": 3303.19, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 39483.07", "to": "C_27AAACN0_021", "weight": 39483.07, "width": 1.5}, {"arrows": "to", "color": "#f59e0b", "from": "27AAACN0118E1Z1", "title": "Amount: Rs. 120850.85", "to": "C_27AAACN0_022", "weight": 120850.85, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_000", "title": "Amount: Rs. 8974.85", "to": "27AAACN0118E1Z1", "weight": 8974.85, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_001", "title": "Amount: Rs. 238160.16", "to": "27AAACN0118E1Z1", "weight": 238160.16, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_002", "title": "Amount: Rs. 84753.42", "to": "27AAACN0118E1Z1", "weight": 84753.42, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_003", "title": "Amount: Rs. 11138.99", "to": "27AAACN0118E1Z1", "weight": 11138.99, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_004", "title": "Amount: Rs. 18784.37", "to": "27AAACN0118E1Z1", "weight": 18784.37, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_005", "title": "Amount: Rs. 84240.9", "to": "27AAACN0118E1Z1", "weight": 84240.9, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_006", "title": "Amount: Rs. 24835.78", "to": "27AAACN0118E1Z1", "weight": 24835.78, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_007", "title": "Amount: Rs. 180298.16", "to": "27AAACN0118E1Z1", "weight": 180298.16, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_008", "title": "Amount: Rs. 51498.84", "to": "27AAACN0118E1Z1", "weight": 51498.84, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_009", "title": "Amount: Rs. 32187.23", "to": "27AAACN0118E1Z1", "weight": 32187.23, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_010", "title": "Amount: Rs. 31774.36", "to": "27AAACN0118E1Z1", "weight": 31774.36, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_011", "title": "Amount: Rs. 2478948.33", "to": "27AAACN0118E1Z1", "weight": 2478948.33, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_012", "title": "Amount: Rs. 4780.52", "to": "27AAACN0118E1Z1", "weight": 4780.52, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_013", "title": "Amount: Rs. 4265.63", "to": "27AAACN0118E1Z1", "weight": 4265.63, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_014", "title": "Amount: Rs. 15334.12", "to": "27AAACN0118E1Z1", "weight": 15334.12, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_015", "title": "Amount: Rs. 181141.27", "to": "27AAACN0118E1Z1", "weight": 181141.27, "width": 1.5}, {"arrows": "to", "color": "#10b981", "from": "V_27AAACN0_016", "title": "Amount: Rs. 546.85", "to": "27AAACN0118E1Z1", "weight": 546.85, "width": 1.5}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {"nodes": {"borderWidth": 2, "borderWidthSelected": 4}, "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.5}}, "smooth": {"type": "continuous", "forceDirection": "none"}}, "physics": {"forceAtlas2Based": {"gravitationalConstant": -50, "centralGravity": 0.01, "springLength": 100, "springConstant": 0.08}, "minVelocity": 0.75, "solver": "forceAtlas2Based"}};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
