@@ -456,6 +456,92 @@ function renderResults(data) {
         fiSection.style.display = 'none';
     }
 
+    // ── Fraud Ring Topology ──
+    const frSection = document.getElementById('fraud-ring-section');
+    const frStats = document.getElementById('fraud-ring-stats');
+    const frDetails = document.getElementById('fraud-chain-details');
+    const imgFraudRing = document.getElementById('chart-fraud-ring');
+    const iframeFraudRing = document.getElementById('iframe-fraud-ring');
+    const btnFrInteractive = document.getElementById('btn-fraud-ring-interactive');
+
+    frStats.innerHTML = '';
+    frDetails.innerHTML = '';
+
+    const circularTrades = data.circular_trades_detail || [];
+    const circularCount = data.network_summary?.circular_trades || 0;
+
+    if (circularCount > 0 || circularTrades.length > 0) {
+        frSection.style.display = 'block';
+
+        // Show fraud ring chart
+        if (data.charts.fraud_ring) {
+            imgFraudRing.src = data.charts.fraud_ring;
+            imgFraudRing.style.display = 'block';
+        }
+
+        // Interactive toggle
+        if (data.charts.fraud_ring_interactive) {
+            btnFrInteractive.style.display = 'inline-flex';
+            btnFrInteractive.textContent = '🔍 View Interactive';
+            btnFrInteractive.onclick = () => {
+                if (iframeFraudRing.style.display === 'none') {
+                    iframeFraudRing.src = data.charts.fraud_ring_interactive;
+                    iframeFraudRing.style.display = 'block';
+                    imgFraudRing.style.display = 'none';
+                    btnFrInteractive.textContent = '📊 View Static';
+                } else {
+                    iframeFraudRing.style.display = 'none';
+                    imgFraudRing.style.display = 'block';
+                    btnFrInteractive.textContent = '🔍 View Interactive';
+                }
+            };
+        }
+
+        // Stats cards
+        const totalRotated = circularTrades.reduce((sum, ct) => sum + (ct.rotated_funds || 0), 0);
+        const entitiesInvolved = new Set();
+        circularTrades.forEach(ct => (ct.path || []).forEach(n => entitiesInvolved.add(n)));
+
+        frStats.innerHTML = `
+            <div class="fr-stat-card">
+                <div class="fr-stat-value" style="color: #EF4444;">${circularTrades.length}</div>
+                <div class="fr-stat-label">Fraud Rings</div>
+            </div>
+            <div class="fr-stat-card">
+                <div class="fr-stat-value" style="color: #F59E0B;">${entitiesInvolved.size}</div>
+                <div class="fr-stat-label">Entities Involved</div>
+            </div>
+            <div class="fr-stat-card">
+                <div class="fr-stat-value" style="color: #EF4444;">Rs. ${totalRotated.toLocaleString('en-IN')}</div>
+                <div class="fr-stat-label">Total Rotated Funds</div>
+            </div>
+        `;
+
+        // Chain-by-chain breakdown
+        if (circularTrades.length > 0) {
+            let chainsHtml = '<h4 style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.95rem;">Detected Fraud Chains</h4>';
+            circularTrades.forEach((ct, idx) => {
+                const path = ct.path || [];
+                const funds = ct.rotated_funds || 0;
+                const pathDisplay = path.map(n => {
+                    if (n === data.gstin) return '<span style="color:#3B82F6;font-weight:700;">TARGET</span>';
+                    return `<span style="color:#FCA5A5;">${n.length > 8 ? n.slice(0,6) + '..' : n}</span>`;
+                }).join(' <span style="color:#EF4444;">→</span> ');
+
+                chainsHtml += `
+                    <div class="fraud-chain-row">
+                        <div class="chain-number">#${idx + 1}</div>
+                        <div class="chain-path">${pathDisplay}</div>
+                        <div class="chain-funds">Rs. ${funds.toLocaleString('en-IN')}</div>
+                    </div>
+                `;
+            });
+            frDetails.innerHTML = chainsHtml;
+        }
+    } else {
+        frSection.style.display = 'none';
+    }
+
     // Smooth scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }

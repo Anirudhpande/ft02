@@ -98,6 +98,7 @@ class AnalyzeResponse(BaseModel):
     purchase_summary: dict
     charts: dict
     pdf_url: str
+    circular_trades_detail: list
     amnesty_status: dict
     elapsed_seconds: float
 
@@ -483,6 +484,11 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     generate_fraud_network(target, CHARTS_DIR)
     generate_fraud_network_html(target, STATIC_DIR)
 
+    # Generate dedicated fraud ring topology chart
+    from visualizations.fraud_ring_chart import generate_fraud_ring_chart, generate_fraud_ring_html
+    fraud_ring_path = generate_fraud_ring_chart(target, CHARTS_DIR)
+    fraud_ring_html = generate_fraud_ring_html(target, STATIC_DIR)
+
     # Generate PDF
     from report_generation.pdf_report import generate_pdf_report
     generate_pdf_report(target, CHARTS_DIR, REPORTS_DIR)
@@ -540,6 +546,14 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "dependency_single_customer": network.get("dependency_on_single_customer", 0),
             "circular_trades": len(network.get("circular_trades", [])),
         },
+        "circular_trades_detail": [
+            {
+                "path": ct.get("path", []),
+                "rotated_funds": ct.get("rotated_funds", 0),
+                "type": ct.get("type", "circular_trading"),
+            }
+            for ct in network.get("circular_trades", [])
+        ],
         "purchase_summary": {
             "purchase_to_sales_ratio": target.get("purchase_data", {}).get("purchase_to_sales_ratio", 0),
         },
@@ -550,6 +564,8 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
             "turnover": f"/api/chart/turnover_{gstin}.png",
             "network": f"/api/chart/network_{gstin}.png",
             "network_interactive": f"/static/network_int_{gstin}.html",
+            "fraud_ring": f"/api/chart/fraud_ring_{gstin}.png",
+            "fraud_ring_interactive": f"/static/fraud_ring_{gstin}.html",
         },
         "pdf_url": f"/api/report/{gstin}/pdf",
         "amnesty_status": _build_amnesty_status(target),
